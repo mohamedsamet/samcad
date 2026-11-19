@@ -39,6 +39,7 @@ impl Theme {
     /// Maps a logical icon to the egui image source for its SVG asset.
     pub fn icon_source(&self, icon: IconId) -> egui::ImageSource<'static> {
         match icon {
+            IconId::Point => egui::include_image!("icons/point.svg"),
             IconId::Line => egui::include_image!("icons/line.svg"),
             IconId::Circle => egui::include_image!("icons/circle.svg"),
             IconId::Rectangle => egui::include_image!("icons/rectangle.svg"),

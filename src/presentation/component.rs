@@ -4,6 +4,7 @@ use crate::core::model::Tool;
 /// corresponds to each variant; presentation only says which icon is wanted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum IconId {
+    Point,
     Line,
     Circle,
     Rectangle,
@@ -22,6 +23,8 @@ pub enum Emphasis {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuAction {
     NewProject,
+    Save,
+    Export,
 }
 
 /// A single entry in a menu.

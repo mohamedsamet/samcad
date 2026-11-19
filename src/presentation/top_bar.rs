@@ -85,10 +85,20 @@ pub fn view_model() -> TopBarModel {
     TopBarModel {
         menus: vec![Menu {
             label: "File",
-            items: vec![MenuItem {
-                label: "New Project",
-                action: MenuAction::NewProject,
-            }],
+            items: vec![
+                MenuItem {
+                    label: "New Project",
+                    action: MenuAction::NewProject,
+                },
+                MenuItem {
+                    label: "Save",
+                    action: MenuAction::Save,
+                },
+                MenuItem {
+                    label: "Export",
+                    action: MenuAction::Export,
+                },
+            ],
         }],
     }
 }
@@ -174,13 +184,17 @@ mod tests {
     }
 
     #[test]
-    fn view_model_contains_only_the_file_menu() {
+    fn view_model_contains_the_file_menu_with_all_actions() {
         let model = view_model();
 
         assert_eq!(model.menus.len(), 1);
         assert_eq!(model.menus[0].label, "File");
-        assert_eq!(model.menus[0].items.len(), 1);
+        assert_eq!(model.menus[0].items.len(), 3);
         assert_eq!(model.menus[0].items[0].label, "New Project");
         assert_eq!(model.menus[0].items[0].action, MenuAction::NewProject);
+        assert_eq!(model.menus[0].items[1].label, "Save");
+        assert_eq!(model.menus[0].items[1].action, MenuAction::Save);
+        assert_eq!(model.menus[0].items[2].label, "Export");
+        assert_eq!(model.menus[0].items[2].action, MenuAction::Export);
     }
 }

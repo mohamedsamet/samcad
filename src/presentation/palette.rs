@@ -27,6 +27,7 @@ pub fn components(tools: &dyn ToolUseCase) -> Vec<Component> {
 
 fn icon_for(tool: Tool) -> IconId {
     match tool {
+        Tool::Point => IconId::Point,
         Tool::Line => IconId::Line,
         Tool::Circle => IconId::Circle,
         Tool::Rectangle => IconId::Rectangle,
@@ -36,6 +37,7 @@ fn icon_for(tool: Tool) -> IconId {
 
 fn label_for(tool: Tool) -> &'static str {
     match tool {
+        Tool::Point => "Point",
         Tool::Line => "Line",
         Tool::Circle => "Circle",
         Tool::Rectangle => "Rectangle",
@@ -71,7 +73,7 @@ mod tests {
     }
 
     #[test]
-    fn builds_four_enabled_buttons_with_no_selection() {
+    fn builds_five_enabled_buttons_with_no_selection() {
         let tools = StubTools {
             selected: Cell::new(None),
         };
@@ -79,7 +81,7 @@ mod tests {
         let items = components(&tools);
         let buttons = buttons(&items);
 
-        assert_eq!(buttons.len(), 4);
+        assert_eq!(buttons.len(), Tool::ALL.len());
         assert!(buttons.iter().all(|item| matches!(
             item,
             Component::IconButton {

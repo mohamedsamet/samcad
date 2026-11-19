@@ -16,6 +16,8 @@
 | FR-07 | P2 | Export SVG | Vector SVG suitable for web/print workflows |
 | FR-08 | P2 | Headless CLI conversion | `samcad convert input.dxf output.pdf` works without a display |
 | FR-09 | P0 | "New Project" entry in the File menu | Selecting it closes the menu; creating the actual empty drawing is deferred to FR-01 |
+| FR-09a | P0 | "Save" and "Export" entries in the File menu | Both appear under File below New Project; selecting either closes the menu. Actual saving/export is deferred to FR-02 / FR-05–FR-06 |
+| FR-09b | P0 | Point tool in the left palette | Fifth icon button (Point) selects the point tool; highlight/tooltip behave like the other tools |
 
 ## 2. Drawing entities
 
@@ -76,7 +78,7 @@
 | FR-54 | P2 | Web (WASM) build | Core editor usable in browser with file open/save via browser APIs |
 | FR-55 | P0 | Permanent main bar | Always displayed at the top; contains the version title in the center and Minimize / Close controls on the right |
 | FR-55a | P0 | Dynamic bar below the main bar | Hidden by default; floats immediately below the permanent main bar, over the tool palette, and contains only the File menu. Appears when the cursor reaches the bar's height; stays visible while the cursor is over either bar; hides 10 s after the cursor leaves both, or immediately on a click outside the bar |
-| FR-56 | P0 | File menu in the top bar | Clicking **File** opens a menu containing **New Project**; clicking **New Project** closes the menu |
+| FR-56 | P0 | File menu in the top bar | Clicking **File** opens a menu containing **New Project**, **Save** and **Export**; clicking any entry closes the menu |
 
 ## Out of scope (explicit)
 

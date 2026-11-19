@@ -57,11 +57,11 @@ fn paint_menus(ui: &mut egui::Ui, menus: &[top_bar::Menu], theme: &Theme) {
                     let item_label = egui::RichText::new(item.label).size(theme.menu_font_size);
                     let item_button = egui::Button::new(item_label).min_size(theme.menu_item_size);
                     if ui.add(item_button).clicked() {
+                        // No document model or file I/O yet: selecting any
+                        // File action only closes the menu for now.
                         match item.action {
-                            MenuAction::NewProject => {
-                                // No document model yet: the only behaviour is
-                                // closing the menu, which egui does here.
-                                ui.close();
+                            MenuAction::NewProject | MenuAction::Save | MenuAction::Export => {
+                                ui.close()
                             }
                         }
                     }

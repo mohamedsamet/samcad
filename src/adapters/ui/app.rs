@@ -4,7 +4,7 @@ use crate::adapters::window::WindowActionBridge;
 use crate::core::ports::{ToolUseCase, WindowUseCase};
 use crate::presentation::top_bar::TopBarState;
 
-use super::{main_bar, theme::Theme, tool_panel, top_bar};
+use super::{cursor, main_bar, theme::Theme, tool_panel, top_bar};
 
 /// eframe application: translates user input into use-case calls and renders
 /// the result. It contains no business logic.
@@ -58,7 +58,15 @@ impl eframe::App for SamcadApp {
         tool_panel::show(ui, self.tools.as_ref(), &self.theme);
         top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
-        // Empty drawing canvas for now.
-        egui::CentralPanel::default().show(ui, |_ui| {});
+        // Empty drawing canvas for now. Over the working zone the pointer
+        // becomes the CAD-style bitmap crosshair from pointer.jpeg; elsewhere
+        // widgets keep their normal cursor.
+        egui::CentralPanel::default().show(ui, |ui| {
+            if ui.ui_contains_pointer() {
+                ui.ctx().set_cursor_image(Some(cursor::crosshair().clone()));
+                // Fallback for integrations that cannot display a bitmap.
+                ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
+            }
+        });
     }
 }
