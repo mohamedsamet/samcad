@@ -2,7 +2,7 @@
 
 Lightweight 2D CAD application — desktop UI foundation.
 
-The current step is intentionally minimal: a full-screen, frameless window with two top bars. The **main bar** is always visible and holds the centered **SamCad vX.Y.Z** title plus **Minimize** `−` / **Close** `×` controls. Just below it sits a **dynamic bar** that floats over the tool palette and contains only a **File** menu (**New Project**, **Save**, **Export**) with enlarged buttons and text; it is hidden until the cursor reaches the bar's height, stays while the cursor is over either bar, hides again 10 s after the cursor leaves, and can be dismissed immediately by clicking outside it. The left tool palette has five equally sized 48×48 SVG icon buttons (**Point**, **Line**, **Circle**, **Rectangle**, **Arc**) with no "Tools" heading — the tool name appears on hover and the selected button is highlighted. The working area shows a CAD-style bitmap crosshair cursor (a full crosshair with a small pickbox at its centre); elsewhere widgets keep their normal cursor. No drawing geometry yet — the buttons only select a tool — and no document model or database.
+The current step is intentionally minimal: a full-screen, frameless window with two top bars. The **main bar** is always visible and holds the centered **SamCad vX.Y.Z** title plus **Minimize** `−` / **Close** `×` controls. Just below it sits a **dynamic bar** that floats over the tool palette and contains only a **File** menu (**New Project**, **Save**, **Export**) with enlarged buttons and text; it is hidden until the cursor reaches the bar's height, stays while the cursor is over either bar, hides again 10 s after the cursor leaves, and can be dismissed immediately by clicking outside it. The left tool palette has five equally sized 48×48 SVG icon buttons (**Point**, **Line**, **Circle**, **Rectangle**, **Arc**) with no "Tools" heading — the tool name appears on hover and the selected button is highlighted. The working area shows a CAD-style bitmap crosshair cursor (a full crosshair with a small pickbox at its centre); elsewhere widgets keep their normal cursor. With the **Point** tool selected, clicking in the drawing area adds a white 2 px point marker that persists for the session. Other tools still only select themselves; there is no file persistence or database yet.
 
 Product requirements and stack research live in [`requirements/docs/`](requirements/docs/README.md).
 
@@ -32,7 +32,7 @@ From the project root:
 cargo run
 ```
 
-A full-screen window opens with an empty drawing area. The top bar with the version title and the `−` / `×` window controls is always visible. Move the cursor up to the height of the second, dynamic bar just below the main bar — it floats over the tool palette and contains the enlarged **File** menu (**New Project**, **Save**, **Export** — each entry currently just closes the menu). It hides again 10 seconds after the cursor leaves both bars, or immediately if you click outside it. `Alt+F4` / `Ctrl+Q` also work, depending on your desktop environment.
+A full-screen window opens with an empty drawing area. Select the **Point** tool in the left palette, then click anywhere in the drawing area to place a white point marker. Press **Esc** to clear the active tool. The top bar with the version title and the `−` / `×` window controls is always visible. Move the cursor up to the height of the second, dynamic bar just below the main bar — it floats over the tool palette and contains the enlarged **File** menu (**New Project**, **Save**, **Export** — each entry currently just closes the menu). It hides again 10 seconds after the cursor leaves both bars, or immediately if you click outside it. `Alt+F4` / `Ctrl+Q` also work, depending on your desktop environment.
 
 To build and run the optimized binary directly:
 
@@ -92,13 +92,16 @@ samcad/
 │   ├── core/
 │   │   ├── mod.rs
 │   │   ├── model.rs               # Tool enum
-│   │   └── ports.rs               # WindowUseCase, ToolUseCase, WindowActions
+│   │   ├── document.rs            # Point entity + Document container
+│   │   └── ports.rs               # WindowUseCase, ToolUseCase, DrawingUseCase, WindowActions
 │   ├── application/
 │   │   ├── mod.rs
 │   │   ├── window.rs              # WindowController use case
-│   │   └── tool.rs                # ToolController use case
+│   │   ├── tool.rs                # ToolController use case
+│   │   └── drawing.rs             # DrawingController use case
 │   ├── presentation/
 │   │   ├── mod.rs
+│   │   ├── canvas.rs              # click action + paint-ready point view model
 │   │   ├── component.rs           # Component, IconId, MenuAction, MenuItem, WindowButton
 │   │   ├── main_bar.rs            # permanent bar: title + window controls
 │   │   ├── palette.rs             # builds the palette component tree + tests

@@ -4,5 +4,6 @@
 //! external system. Domain entities (document, geometry, commands) will live
 //! alongside the ports as the feature set grows.
 
+pub mod document;
 pub mod model;
 pub mod ports;

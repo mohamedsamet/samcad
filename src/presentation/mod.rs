@@ -6,6 +6,7 @@
 //! shapes are previewed on the canvas). It never imports egui or eframe.
 //! The egui adapter in `adapters/ui` maps these components to widgets.
 
+pub mod canvas;
 pub mod component;
 pub mod main_bar;
 pub mod palette;

@@ -34,13 +34,16 @@ src/
 ├── core/
 │   ├── mod.rs               # domain entities + ports (no framework deps)
 │   ├── model.rs             # Tool enum
-│   └── ports.rs             # driving ports (WindowUseCase, ToolUseCase), driven port (WindowActions)
+│   ├── document.rs          # Point entity + Document container
+│   └── ports.rs             # driving ports (WindowUseCase, ToolUseCase, DrawingUseCase), driven port (WindowActions)
 ├── application/
 │   ├── mod.rs
 │   ├── window.rs            # WindowController implements WindowUseCase
-│   └── tool.rs              # ToolController implements ToolUseCase
+│   ├── tool.rs              # ToolController implements ToolUseCase
+│   └── drawing.rs           # DrawingController implements DrawingUseCase
 ├── presentation/
 │   ├── mod.rs
+│   ├── canvas.rs            # click action + paint-ready point view model
 │   ├── component.rs         # Component / IconId / MenuAction / MenuItem / WindowButton — no egui
 │   ├── main_bar.rs          # permanent bar view model (title + window controls)
 │   ├── palette.rs           # builds the palette component tree from tool state
@@ -63,9 +66,11 @@ src/
 
 Flow for a click on **Close**: `adapters/ui/main_bar.rs` → `WindowUseCase::close()` → `WindowController` → `WindowActions::close()` → `WindowActionAdapter` queues a command → `WindowActionBridge` sends `ViewportCommand::Close` on the next frame.
 
-Flow for the tool palette: the adapter reads `tools.selected()` and passes it as plain data to `presentation::palette::components(selected)`, which returns an iterator over `Component`s (a separator and five `IconButton`s — Point, Line, Circle, Rectangle, Arc — with tooltips and one selected) → `adapters/ui/tool_panel.rs` maps each component to an egui widget using `Theme` for sizes and `IconId → SVG` assets. A click calls `ToolUseCase::select()`. Presentation therefore depends only on `Tool`, not on the application ports, and the component rules are unit-tested without egui. Canvas shape previews will be added as new `Component` variants produced by presentation and painted by the adapter.
+Flow for the tool palette: the adapter reads `tools.selected()` and passes it as plain data to `presentation::palette::components(selected)`, which returns an iterator over `Component`s (a separator and five `IconButton`s — Point, Line, Circle, Rectangle, Arc — with tooltips and one selected) → `adapters/ui/tool_panel.rs` maps each component to an egui widget using `Theme` for sizes and `IconId → SVG` assets. A click calls `ToolUseCase::select()`; pressing Esc in `adapters/ui/app.rs` calls `ToolUseCase::deselect()`. Presentation therefore depends only on `Tool`, not on the application ports, and the component rules are unit-tested without egui. Canvas shape previews will be added as new `Component` variants produced by presentation and painted by the adapter.
 
 Two bars: `presentation::main_bar::view_model()` supplies the title and window controls to `adapters/ui/main_bar.rs`, which paints a permanent `Panel::top`. `presentation::top_bar` supplies the auto-hide state machine and the dynamic bar's menu-only view model; `adapters/ui/top_bar.rs` paints it as a foreground `egui::Area` anchored immediately below the main bar. Each frame the adapter feeds cursor Y and time into `TopBarState::update()` with the bottom edge of both bars as the reveal height: the dynamic bar appears when the cursor reaches that height, stays while the cursor is on either bar, and hides 10 s after the cursor leaves both; `TopBarState::notify_click()` dismisses it immediately on a click below that height. All of this is unit-tested without a window. The bar is a foreground `Area` that floats over the tool palette (no space is reserved for it there), and its File / New Project buttons use larger minimum sizes from `Theme`. Clicking **File → New Project / Save / Export** closes the menu via `ui.close()`; the actual operations are deferred (FR-01, FR-02, FR-05–FR-06). The tool palette has no "Tools" heading and uses larger 48×48 buttons (28×28 icons).
+
+Flow for a canvas click: `adapters/ui/canvas.rs` allocates the whole `CentralPanel` as a clickable area, converts the pointer position to canvas-local coordinates, and asks `presentation::canvas::click_action(selected, x, y)` what to do. With the Point tool it returns `AddPoint`; the adapter maps that to `DrawingUseCase::add_point()` on `DrawingController`, which appends to the `Document`. Each frame the adapter asks `DrawingUseCase::points()` and then `presentation::canvas::view_model()` to obtain paint-ready `CanvasPoint`s; it paints each as a white circle of `Theme::point_radius` at `rect.min + point`. Coordinates are canvas-local until a viewport transform (zoom/pan) lands.
 
 Canvas cursor: when the pointer is inside the `CentralPanel`, `adapters/ui/canvas.rs` calls `set_cursor_image()` with the crosshair-with-pickbox bitmap from `adapters/ui/cursor.rs`. The bitmap is embedded as raw RGBA (`include_bytes!`, no runtime image-decoding dependency), cached in a `OnceLock` so egui-winit can dedupe it by `Arc` pointer, and falls back to `egui::CursorIcon::Crosshair` on integrations that cannot display bitmaps. Outside the canvas the custom image is not set, so widgets keep their normal cursor. The Point tool icon is a simple filled dot with a faint ring, distinct from the canvas crosshair.
 

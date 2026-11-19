@@ -3,6 +3,7 @@
 
 use samcad::adapters::ui::{SamcadApp, native_options};
 use samcad::adapters::window::WindowActionAdapter;
+use samcad::application::drawing::DrawingController;
 use samcad::application::tool::ToolController;
 use samcad::application::window::WindowController;
 
@@ -11,6 +12,7 @@ fn main() -> eframe::Result {
     let (window_actions, window_bridge) = WindowActionAdapter::channel();
     let window = WindowController::new(window_actions);
     let tools = ToolController::new();
+    let drawing = DrawingController::new();
 
     eframe::run_native(
         "samcad",
@@ -20,6 +22,7 @@ fn main() -> eframe::Result {
                 cc,
                 Box::new(window),
                 Box::new(tools),
+                Box::new(drawing),
                 window_bridge,
             )))
         }),

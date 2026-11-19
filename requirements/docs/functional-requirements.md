@@ -18,6 +18,7 @@
 | FR-09 | P0 | "New Project" entry in the File menu | Selecting it closes the menu; creating the actual empty drawing is deferred to FR-01 |
 | FR-09a | P0 | "Save" and "Export" entries in the File menu | Both appear under File below New Project; selecting either closes the menu. Actual saving/export is deferred to FR-02 / FR-05–FR-06 |
 | FR-09b | P0 | Point tool in the left palette | Fifth icon button (Point) selects the point tool; highlight/tooltip behave like the other tools |
+| FR-09c | P0 | Escape clears the active tool | Pressing Esc deselects the current tool; no palette button is highlighted and clicking the canvas does nothing until a tool is picked again |
 
 ## 2. Drawing entities
 
@@ -30,6 +31,7 @@
 | FR-14 | P0 | Arc | Center, radius, start/end angles (3-point form later) |
 | FR-15 | P0 | Text | Single-line text with position, height and rotation |
 | FR-16 | P1 | Point construction entity | Visible marker, exportable to DXF |
+| FR-16a | P0 | Draw a point by clicking | With the Point tool active, clicking in the drawing area stores a point in the document and paints a white 2 px marker at the click position; markers persist while the app runs |
 | FR-17 | P2 | Ellipse, spline, hatch, dimensions, leader, block/insert | Each added entity type has create/edit + DXF + PDF support |
 
 ## 3. Editing

@@ -30,6 +30,10 @@ impl ToolUseCase for ToolController {
         self.selected.set(Some(tool));
     }
 
+    fn deselect(&self) {
+        self.selected.set(None);
+    }
+
     fn selected(&self) -> Option<Tool> {
         self.selected.get()
     }
@@ -49,5 +53,18 @@ mod tests {
 
         tools.select(Tool::Arc);
         assert_eq!(tools.selected(), Some(Tool::Arc));
+    }
+
+    #[test]
+    fn deselect_clears_the_active_tool() {
+        let tools = ToolController::new();
+        tools.select(Tool::Line);
+
+        tools.deselect();
+        assert_eq!(tools.selected(), None);
+
+        // Deselecting again is a no-op.
+        tools.deselect();
+        assert_eq!(tools.selected(), None);
     }
 }

@@ -18,6 +18,10 @@ pub struct Theme {
     pub menu_item_size: egui::Vec2,
     /// Font size used for the File button and its menu entries.
     pub menu_font_size: f32,
+    /// Radius of a drawn point marker, in points.
+    pub point_radius: f32,
+    /// Colour of a drawn point marker.
+    pub point_color: egui::Color32,
 }
 
 impl Default for Theme {
@@ -31,6 +35,8 @@ impl Default for Theme {
             menu_button_size: egui::vec2(80.0, 32.0),
             menu_item_size: egui::vec2(160.0, 32.0),
             menu_font_size: 16.0,
+            point_radius: 2.0,
+            point_color: egui::Color32::WHITE,
         }
     }
 }

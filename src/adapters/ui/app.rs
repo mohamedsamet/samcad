@@ -1,7 +1,7 @@
 use eframe::egui;
 
 use crate::adapters::window::WindowActionBridge;
-use crate::core::ports::{ToolUseCase, WindowUseCase};
+use crate::core::ports::{DrawingUseCase, ToolUseCase, WindowUseCase};
 use crate::presentation::top_bar::TopBarState;
 
 use super::{canvas, main_bar, theme::Theme, tool_panel, top_bar};
@@ -11,6 +11,7 @@ use super::{canvas, main_bar, theme::Theme, tool_panel, top_bar};
 pub struct SamcadApp {
     window: Box<dyn WindowUseCase>,
     tools: Box<dyn ToolUseCase>,
+    drawing: Box<dyn DrawingUseCase>,
     window_bridge: WindowActionBridge,
     theme: Theme,
     top_bar: TopBarState,
@@ -21,6 +22,7 @@ impl SamcadApp {
         cc: &eframe::CreationContext<'_>,
         window: Box<dyn WindowUseCase>,
         tools: Box<dyn ToolUseCase>,
+        drawing: Box<dyn DrawingUseCase>,
         window_bridge: WindowActionBridge,
     ) -> Self {
         // Required so SVG ImageSource values can be rasterized and displayed.
@@ -29,6 +31,7 @@ impl SamcadApp {
         Self {
             window,
             tools,
+            drawing,
             window_bridge,
             theme: Theme::default(),
             top_bar: TopBarState::default(),
@@ -52,6 +55,11 @@ impl eframe::App for SamcadApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.window_bridge.apply_to(ui.ctx());
 
+        // Esc clears the active tool, if any.
+        if ui.ctx().input(|input| input.key_pressed(egui::Key::Escape)) {
+            self.tools.deselect();
+        }
+
         // The main bar reserves space at the top and the tool palette reserves
         // space on the left; the dynamic bar is an overlay drawn on top of them.
         main_bar::show(ui, self.window.as_ref(), &self.theme);
@@ -59,6 +67,6 @@ impl eframe::App for SamcadApp {
         top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
         // Drawing canvas, filled last so the panels keep their reserved space.
-        canvas::show(ui);
+        canvas::show(ui, self.tools.as_ref(), self.drawing.as_ref(), &self.theme);
     }
 }
