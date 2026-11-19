@@ -1,0 +1,10 @@
+[package]
+name = "samcad"
+version = "0.1.0"
+edition = "2024"
+description = "Lightweight 2D CAD application"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+eframe = "0.37"
+egui_extras = { version = "0.37", features = ["svg"] }

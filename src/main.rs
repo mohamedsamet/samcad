@@ -1,0 +1,27 @@
+//! Composition root: wire the adapters and use cases, then launch the UI.
+//! No business logic belongs here.
+
+use samcad::adapters::ui::{SamcadApp, native_options};
+use samcad::adapters::window::WindowActionAdapter;
+use samcad::application::tool::ToolController;
+use samcad::application::window::WindowController;
+
+fn main() -> eframe::Result {
+    // Driven adapter -> use cases -> driving adapter.
+    let (window_actions, window_bridge) = WindowActionAdapter::channel();
+    let window = WindowController::new(window_actions);
+    let tools = ToolController::new();
+
+    eframe::run_native(
+        "samcad",
+        native_options(),
+        Box::new(move |cc| {
+            Ok(Box::new(SamcadApp::new(
+                cc,
+                Box::new(window),
+                Box::new(tools),
+                window_bridge,
+            )))
+        }),
+    )
+}
