@@ -15,6 +15,7 @@
 | FR-06 | P1 | Export PDF | Vector output at selectable paper size (A4/A3/Letter) and scale, with optional frame/title block |
 | FR-07 | P2 | Export SVG | Vector SVG suitable for web/print workflows |
 | FR-08 | P2 | Headless CLI conversion | `samcad convert input.dxf output.pdf` works without a display |
+| FR-09 | P0 | "New Project" entry in the File menu | Selecting it closes the menu; creating the actual empty drawing is deferred to FR-01 |
 
 ## 2. Drawing entities
 
@@ -73,6 +74,9 @@
 | FR-52 | P1 | Dark/light theme | Follows egui theme with CAD-appropriate colors |
 | FR-53 | P1 | Localization-ready strings | UI text centralized; no hardcoded user-facing strings in core |
 | FR-54 | P2 | Web (WASM) build | Core editor usable in browser with file open/save via browser APIs |
+| FR-55 | P0 | Permanent main bar | Always displayed at the top; contains the version title in the center and Minimize / Close controls on the right |
+| FR-55a | P0 | Dynamic bar below the main bar | Hidden by default; floats immediately below the permanent main bar, over the tool palette, and contains only the File menu. Appears when the cursor reaches the bar's height; stays visible while the cursor is over either bar; hides 10 s after the cursor leaves both, or immediately on a click outside the bar |
+| FR-56 | P0 | File menu in the top bar | Clicking **File** opens a menu containing **New Project**; clicking **New Project** closes the menu |
 
 ## Out of scope (explicit)
 

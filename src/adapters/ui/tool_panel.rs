@@ -13,6 +13,7 @@ pub fn show(ui: &mut egui::Ui, tools: &dyn ToolUseCase, theme: &Theme) {
         .exact_size(theme.panel_width)
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
+                // No reserved space: the dynamic bar floats over this panel.
                 for component in palette::components(tools) {
                     paint(ui, component, theme, tools);
                 }

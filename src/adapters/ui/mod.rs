@@ -1,8 +1,9 @@
 //! Driving adapter: the eframe/egui user interface.
 
 mod app;
+mod main_bar;
 mod theme;
-mod title_bar;
 mod tool_panel;
+mod top_bar;
 
 pub use app::{SamcadApp, native_options};

@@ -1,22 +1,17 @@
 use crate::core::model::Tool;
 use crate::core::ports::ToolUseCase;
 
-use super::component::{Component, Emphasis, IconId};
-
-const TITLE: &str = "Tools";
+use super::component::{Component, IconId};
 
 /// Builds the complete palette component tree from the current tool state.
 ///
 /// All decisions — which tools exist, their labels and icons, and which one is
-/// highlighted — are made here, so they can be tested without a GUI.
+/// highlighted — are made here, so they can be tested without a GUI. The
+/// palette has no title; only the icon buttons are shown.
 pub fn components(tools: &dyn ToolUseCase) -> Vec<Component> {
     let selected = tools.selected();
 
-    let mut items = Vec::with_capacity(Tool::ALL.len() + 2);
-    items.push(Component::Label {
-        text: TITLE.to_owned(),
-        emphasis: Emphasis::Strong,
-    });
+    let mut items = Vec::with_capacity(Tool::ALL.len() + 1);
     items.push(Component::Separator);
 
     items.extend(Tool::ALL.into_iter().map(|tool| Component::IconButton {

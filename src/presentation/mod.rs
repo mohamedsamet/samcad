@@ -7,4 +7,6 @@
 //! The egui adapter in `adapters/ui` maps these components to widgets.
 
 pub mod component;
+pub mod main_bar;
 pub mod palette;
+pub mod top_bar;

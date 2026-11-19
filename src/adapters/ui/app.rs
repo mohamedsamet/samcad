@@ -2,8 +2,9 @@ use eframe::egui;
 
 use crate::adapters::window::WindowActionBridge;
 use crate::core::ports::{ToolUseCase, WindowUseCase};
+use crate::presentation::top_bar::TopBarState;
 
-use super::{theme::Theme, title_bar, tool_panel};
+use super::{main_bar, theme::Theme, tool_panel, top_bar};
 
 /// eframe application: translates user input into use-case calls and renders
 /// the result. It contains no business logic.
@@ -12,6 +13,7 @@ pub struct SamcadApp {
     tools: Box<dyn ToolUseCase>,
     window_bridge: WindowActionBridge,
     theme: Theme,
+    top_bar: TopBarState,
 }
 
 impl SamcadApp {
@@ -29,6 +31,7 @@ impl SamcadApp {
             tools,
             window_bridge,
             theme: Theme::default(),
+            top_bar: TopBarState::default(),
         }
     }
 }
@@ -49,8 +52,11 @@ impl eframe::App for SamcadApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.window_bridge.apply_to(ui.ctx());
 
-        title_bar::show(ui, self.window.as_ref());
+        // The permanent bar reserves space; the dynamic one overlays just
+        // below it, so neither covers the tool palette.
+        main_bar::show(ui, self.window.as_ref(), &self.theme);
         tool_panel::show(ui, self.tools.as_ref(), &self.theme);
+        top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
         // Empty drawing canvas for now.
         egui::CentralPanel::default().show(ui, |_ui| {});
