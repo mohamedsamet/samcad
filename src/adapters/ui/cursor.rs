@@ -1,6 +1,6 @@
 //! CAD-style bitmap cursor for the working area.
 //!
-//! The bitmap is embedded as raw RGBA (generated from `pointer.jpeg`), so no
+//! The bitmap is embedded as raw RGBA (a CAD crosshair with a pickbox), so no
 //! runtime image-decoding dependency is needed. egui-winit dedupes custom
 //! cursors by `Arc` pointer, hence the shared cached instance.
 

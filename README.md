@@ -2,7 +2,7 @@
 
 Lightweight 2D CAD application — desktop UI foundation.
 
-The current step is intentionally minimal: a full-screen, frameless window with two top bars. The **main bar** is always visible and holds the centered **SamCad vX.Y.Z** title plus **Minimize** `−` / **Close** `×` controls. Just below it sits a **dynamic bar** that floats over the tool palette and contains only a **File** menu (**New Project**, **Save**, **Export**) with enlarged buttons and text; it is hidden until the cursor reaches the bar's height, stays while the cursor is over either bar, hides again 10 s after the cursor leaves, and can be dismissed immediately by clicking outside it. The left tool palette has five equally sized 48×48 SVG icon buttons (**Point**, **Line**, **Circle**, **Rectangle**, **Arc**) with no "Tools" heading — the tool name appears on hover and the selected button is highlighted. The working area shows a CAD-style bitmap crosshair cursor (extracted from `pointer.jpeg`: full crosshair with a small pickbox at its centre); elsewhere widgets keep their normal cursor. No drawing geometry yet — the buttons only select a tool — and no document model or database.
+The current step is intentionally minimal: a full-screen, frameless window with two top bars. The **main bar** is always visible and holds the centered **SamCad vX.Y.Z** title plus **Minimize** `−` / **Close** `×` controls. Just below it sits a **dynamic bar** that floats over the tool palette and contains only a **File** menu (**New Project**, **Save**, **Export**) with enlarged buttons and text; it is hidden until the cursor reaches the bar's height, stays while the cursor is over either bar, hides again 10 s after the cursor leaves, and can be dismissed immediately by clicking outside it. The left tool palette has five equally sized 48×48 SVG icon buttons (**Point**, **Line**, **Circle**, **Rectangle**, **Arc**) with no "Tools" heading — the tool name appears on hover and the selected button is highlighted. The working area shows a CAD-style bitmap crosshair cursor (a full crosshair with a small pickbox at its centre); elsewhere widgets keep their normal cursor. No drawing geometry yet — the buttons only select a tool — and no document model or database.
 
 Product requirements and stack research live in [`requirements/docs/`](requirements/docs/README.md).
 
@@ -116,7 +116,7 @@ samcad/
 │           ├── top_bar.rs         # floating Area below it with File menu
 │           ├── tool_panel.rs      # renders presentation components with egui
 │           └── icons/             # point.svg, line.svg, circle.svg, rectangle.svg, arc.svg,
-│                                  # cursor_crosshair.png/.rgba, pointer.jpeg (source)
+│                                  # cursor_crosshair.png/.rgba
 ├── requirements/docs/             # product & engineering documentation
 ├── README.md                      # this guide
 └── .gitignore                     # ignores build output in target/

@@ -58,7 +58,7 @@ src/
         ├── top_bar.rs       # floating Area just below the main bar: File menu
         ├── tool_panel.rs    # renders presentation components with egui
         └── icons/           # point.svg, line.svg, circle.svg, rectangle.svg, arc.svg,
-                             # cursor_crosshair.png/.rgba, pointer.jpeg (source)
+                             # cursor_crosshair.png/.rgba
 ```
 
 Flow for a click on **Close**: `adapters/ui/main_bar.rs` → `WindowUseCase::close()` → `WindowController` → `WindowActions::close()` → `WindowActionAdapter` queues a command → `WindowActionBridge` sends `ViewportCommand::Close` on the next frame.
