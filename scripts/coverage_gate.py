@@ -23,16 +23,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 
-SCOPE_PREFIXES = ("core/", "application/", "presentation/")
-SCOPE_FILES = {
-    "adapters/window.rs",
-    "adapters/ui/theme.rs",
-    "adapters/ui/cursor.rs",
-}
-
+SCOPE_PREFIXES = ("core/", "application/", "presentation/", "adapters/")
 
 def in_scope(relative_path: str) -> bool:
-    return relative_path in SCOPE_FILES or relative_path.startswith(SCOPE_PREFIXES)
+    return relative_path.startswith(SCOPE_PREFIXES)
 
 
 def area_of(relative_path: str) -> str:
