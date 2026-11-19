@@ -11,13 +11,6 @@ pub enum IconId {
     Arc,
 }
 
-/// Text styling chosen by presentation, interpreted by the adapter.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Emphasis {
-    Normal,
-    Strong,
-}
-
 /// An action attached to a menu item. Presentation decides that the action
 /// exists; the adapter decides how to trigger it in the current UI framework.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -28,13 +21,13 @@ pub enum MenuAction {
 }
 
 /// A single entry in a menu.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MenuItem {
     pub label: &'static str,
     pub action: MenuAction,
 }
 
-/// A window control offered by the floating top bar.
+/// A window control offered by the main bar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WindowButton {
     Minimize,
@@ -53,10 +46,6 @@ pub enum Component {
         tooltip: &'static str,
         selected: bool,
         enabled: bool,
-    },
-    Label {
-        text: String,
-        emphasis: Emphasis,
     },
     Separator,
 }

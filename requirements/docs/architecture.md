@@ -23,7 +23,7 @@ If the very first spike needs to move faster, a single crate with `core/`, `io/`
 
 ## Implemented structure (hexagonal / ports and adapters)
 
-The current single-crate layout applies hexagonal boundaries through modules. Dependencies point inwards only: `adapters` → `presentation` → `application` → `core`.
+The current single-crate layout applies hexagonal boundaries through modules. Dependencies point inwards only: `application` and `presentation` depend on `core`; `adapters` depend on `core` and `presentation`; `main` wires application use cases into the adapters.
 
 Because this is a UI-centric product, presentation is a first-class layer, not a disposable shell. It "cooks" egui-agnostic component descriptions; `adapters/ui` only holds egui-specific parametrization (sizes, SVG assets) and paints them.
 
@@ -41,7 +41,7 @@ src/
 │   └── tool.rs              # ToolController implements ToolUseCase
 ├── presentation/
 │   ├── mod.rs
-│   ├── component.rs         # Component / IconId / Emphasis / MenuAction / WindowButton — no egui
+│   ├── component.rs         # Component / IconId / MenuAction / MenuItem / WindowButton — no egui
 │   ├── main_bar.rs          # permanent bar view model (title + window controls)
 │   ├── palette.rs           # builds the palette component tree from tool state
 │   └── top_bar.rs           # auto-hide state machine + dynamic bar view model (File only)
@@ -51,6 +51,7 @@ src/
     └── ui/
         ├── mod.rs
         ├── app.rs           # driving adapter: SamcadApp + native_options()
+        ├── canvas.rs        # central drawing area + CAD cursor
         ├── theme.rs         # sizes + IconId → SVG asset mapping (egui-specific)
         ├── cursor.rs        # embedded bitmap crosshair cursor for the canvas
         ├── main_bar.rs      # permanent top Panel: title + window controls
@@ -62,11 +63,11 @@ src/
 
 Flow for a click on **Close**: `adapters/ui/main_bar.rs` → `WindowUseCase::close()` → `WindowController` → `WindowActions::close()` → `WindowActionAdapter` queues a command → `WindowActionBridge` sends `ViewportCommand::Close` on the next frame.
 
-Flow for the tool palette: `presentation::palette::components()` reads `ToolUseCase` and returns a `Vec<Component>` (separator and five `IconButton`s — Point, Line, Circle, Rectangle, Arc — with tooltips and one selected) → `adapters/ui/tool_panel.rs` maps each component to an egui widget using `Theme` for sizes and `IconId → SVG` assets. A click calls `ToolUseCase::select()`. The component rules are unit-tested without egui. Canvas shape previews will be added as new `Component` variants produced by presentation and painted by the adapter.
+Flow for the tool palette: the adapter reads `tools.selected()` and passes it as plain data to `presentation::palette::components(selected)`, which returns an iterator over `Component`s (a separator and five `IconButton`s — Point, Line, Circle, Rectangle, Arc — with tooltips and one selected) → `adapters/ui/tool_panel.rs` maps each component to an egui widget using `Theme` for sizes and `IconId → SVG` assets. A click calls `ToolUseCase::select()`. Presentation therefore depends only on `Tool`, not on the application ports, and the component rules are unit-tested without egui. Canvas shape previews will be added as new `Component` variants produced by presentation and painted by the adapter.
 
 Two bars: `presentation::main_bar::view_model()` supplies the title and window controls to `adapters/ui/main_bar.rs`, which paints a permanent `Panel::top`. `presentation::top_bar` supplies the auto-hide state machine and the dynamic bar's menu-only view model; `adapters/ui/top_bar.rs` paints it as a foreground `egui::Area` anchored immediately below the main bar. Each frame the adapter feeds cursor Y and time into `TopBarState::update()` with the bottom edge of both bars as the reveal height: the dynamic bar appears when the cursor reaches that height, stays while the cursor is on either bar, and hides 10 s after the cursor leaves both; `TopBarState::notify_click()` dismisses it immediately on a click below that height. All of this is unit-tested without a window. The bar is a foreground `Area` that floats over the tool palette (no space is reserved for it there), and its File / New Project buttons use larger minimum sizes from `Theme`. Clicking **File → New Project / Save / Export** closes the menu via `ui.close()`; the actual operations are deferred (FR-01, FR-02, FR-05–FR-06). The tool palette has no "Tools" heading and uses larger 48×48 buttons (28×28 icons).
 
-Canvas cursor: when the pointer is inside the `CentralPanel`, `adapters/ui/app.rs` calls `set_cursor_image()` with the crosshair-with-pickbox bitmap from `adapters/ui/cursor.rs`. The bitmap is embedded as raw RGBA (`include_bytes!`, no runtime image-decoding dependency), cached in a `OnceLock` so egui-winit can dedupe it by `Arc` pointer, and falls back to `egui::CursorIcon::Crosshair` on integrations that cannot display bitmaps. Outside the canvas the custom image is not set, so widgets keep their normal cursor. The Point tool icon is a simple filled dot with a faint ring, distinct from the canvas crosshair.
+Canvas cursor: when the pointer is inside the `CentralPanel`, `adapters/ui/canvas.rs` calls `set_cursor_image()` with the crosshair-with-pickbox bitmap from `adapters/ui/cursor.rs`. The bitmap is embedded as raw RGBA (`include_bytes!`, no runtime image-decoding dependency), cached in a `OnceLock` so egui-winit can dedupe it by `Arc` pointer, and falls back to `egui::CursorIcon::Crosshair` on integrations that cannot display bitmaps. Outside the canvas the custom image is not set, so widgets keep their normal cursor. The Point tool icon is a simple filled dot with a faint ring, distinct from the canvas crosshair.
 
 When the project later splits into workspace crates, these modules map onto `samcad-core`, `samcad-presentation`, `samcad-app`, and a new `samcad-ports` crate (or ports stay in `core`).
 

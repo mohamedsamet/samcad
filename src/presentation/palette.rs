@@ -1,28 +1,27 @@
 use crate::core::model::Tool;
-use crate::core::ports::ToolUseCase;
 
 use super::component::{Component, IconId};
 
-/// Builds the complete palette component tree from the current tool state.
+/// Builds the palette components from the current selection.
 ///
 /// All decisions — which tools exist, their labels and icons, and which one is
 /// highlighted — are made here, so they can be tested without a GUI. The
 /// palette has no title; only the icon buttons are shown.
-pub fn components(tools: &dyn ToolUseCase) -> Vec<Component> {
-    let selected = tools.selected();
+///
+/// Taking the selection as plain data keeps presentation independent of the
+/// application's driving ports; the adapter passes `tools.selected()`.
+pub fn components(selected: Option<Tool>) -> impl Iterator<Item = Component> {
+    let buttons = Tool::ALL
+        .into_iter()
+        .map(move |tool| Component::IconButton {
+            tool,
+            icon: icon_for(tool),
+            tooltip: label_for(tool),
+            selected: selected == Some(tool),
+            enabled: true,
+        });
 
-    let mut items = Vec::with_capacity(Tool::ALL.len() + 1);
-    items.push(Component::Separator);
-
-    items.extend(Tool::ALL.into_iter().map(|tool| Component::IconButton {
-        tool,
-        icon: icon_for(tool),
-        tooltip: label_for(tool),
-        selected: selected == Some(tool),
-        enabled: true,
-    }));
-
-    items
+    std::iter::once(Component::Separator).chain(buttons)
 }
 
 fn icon_for(tool: Tool) -> IconId {
@@ -47,39 +46,17 @@ fn label_for(tool: Tool) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::Cell;
-
     use super::*;
 
-    struct StubTools {
-        selected: Cell<Option<Tool>>,
-    }
-
-    impl ToolUseCase for StubTools {
-        fn select(&self, tool: Tool) {
-            self.selected.set(Some(tool));
-        }
-
-        fn selected(&self) -> Option<Tool> {
-            self.selected.get()
-        }
-    }
-
-    fn buttons(items: &[Component]) -> Vec<&Component> {
+    fn buttons(items: impl Iterator<Item = Component>) -> Vec<Component> {
         items
-            .iter()
             .filter(|item| matches!(item, Component::IconButton { .. }))
             .collect()
     }
 
     #[test]
-    fn builds_five_enabled_buttons_with_no_selection() {
-        let tools = StubTools {
-            selected: Cell::new(None),
-        };
-
-        let items = components(&tools);
-        let buttons = buttons(&items);
+    fn builds_one_enabled_button_per_tool_with_no_selection() {
+        let buttons = buttons(components(None));
 
         assert_eq!(buttons.len(), Tool::ALL.len());
         assert!(buttons.iter().all(|item| matches!(
@@ -94,19 +71,13 @@ mod tests {
 
     #[test]
     fn highlights_exactly_the_selected_tool() {
-        let tools = StubTools {
-            selected: Cell::new(None),
-        };
-        tools.select(Tool::Arc);
-
-        let selected: Vec<Tool> = components(&tools)
-            .iter()
+        let selected: Vec<Tool> = components(Some(Tool::Arc))
             .filter_map(|item| match item {
                 Component::IconButton {
                     tool,
                     selected: true,
                     ..
-                } => Some(*tool),
+                } => Some(tool),
                 _ => None,
             })
             .collect();

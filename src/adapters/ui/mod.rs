@@ -1,6 +1,7 @@
 //! Driving adapter: the eframe/egui user interface.
 
 mod app;
+mod canvas;
 mod cursor;
 mod main_bar;
 mod theme;

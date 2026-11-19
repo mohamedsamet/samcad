@@ -18,12 +18,15 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
             // Three equal columns keep the middle one centered in the window.
             ui.columns(3, |columns| {
                 columns[1].vertical_centered(|ui| {
-                    ui.label(&model.title);
+                    ui.label(model.title);
                 });
 
+                // Right-to-left layout puts the first item at the far right,
+                // so iterate in reverse to keep Close at the edge and Minimize
+                // to its left (the conventional order).
                 columns[2].with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    for button in &model.window_buttons {
-                        paint_window_button(ui, *button, window);
+                    for &button in model.window_buttons.iter().rev() {
+                        paint_window_button(ui, button, window);
                     }
                 });
             });

@@ -10,9 +10,10 @@
 //! - [`adapters`] — framework-specific code: the eframe UI renderer and the
 //!   window-command bridge.
 //!
-//! Dependencies point inwards only:
-//! `adapters` → `presentation` → `application` → `core`.
-//! The binary in `src/main.rs` is the composition root that wires them together.
+//! Dependencies point inwards only: `application` and `presentation` depend on
+//! `core`, while `adapters` depend on `core` and `presentation`. Application
+//! use cases implement `core`'s driving ports; `src/main.rs` is the
+//! composition root that injects them into the UI adapter.
 
 pub mod adapters;
 pub mod application;

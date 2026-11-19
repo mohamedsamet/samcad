@@ -57,27 +57,26 @@ cargo clippy         # lint the code
 
 ## Architecture
 
-The code follows **hexagonal architecture** (ports and adapters) inside a single crate. Dependencies point inwards only: `adapters` → `presentation` → `application` → `core`.
+The code follows **hexagonal architecture** (ports and adapters) inside a single crate. Dependencies point inwards only: `application` and `presentation` depend on `core`, and `adapters` depend on `core` and `presentation`.
 
 ```text
-adapters/ui (egui) ──reads──> presentation ──calls──> ToolUseCase / WindowUseCase
-     │                            │                        │ implemented by
-     │ paints                     │ builds                  ▼
-     ▼                            ▼              ToolController / WindowController
-  egui widgets            Component tree (no egui)          │ calls
-                                                            ▼
-                                                     WindowActions (driven port)
-                                                            │ implemented by
-                                                            ▼
-                                                  WindowActionAdapter + Bridge
-                                                            │
-                                                            ▼
-                                                  egui ViewportCommand
+adapters/ui (egui)
+   │  ├──reads──> presentation (egui-agnostic view models / components)
+   │  └──calls──> ToolUseCase / WindowUseCase      (driving ports)
+   │                        │ implemented by
+   │ paints                 ▼
+   ▼               ToolController / WindowController
+egui widgets             │ calls
+                         ▼
+                 WindowActions (driven port)
+                         │ implemented by
+                         ▼
+              WindowActionAdapter + Bridge → egui ViewportCommand
 ```
 
 - `core/` — domain model (`Tool`) and port traits. No framework or I/O dependencies.
 - `application/` — use cases implementing the driving ports.
-- `presentation/` — UI/product decisions as egui-agnostic values: the palette `Component` tree, the permanent main bar view model (title + window controls), the dynamic bar view model (File menu), and the auto-hide state machine (reveal at bar height, 10 s hide delay, click-outside dismissal). All testable without a window.
+- `presentation/` — UI/product decisions as egui-agnostic values: the palette `Component` iterator, the permanent main bar view model (title + window controls), the dynamic bar view model (File menu), and the auto-hide state machine (reveal at bar height, 10 s hide delay, click-outside dismissal). It consumes plain data (e.g. the selected `Tool`), not application ports, and its view models are static, so painting allocates nothing. All testable without a window.
 - `adapters/ui/` — a thin egui renderer: it receives those view models plus a `Theme` (sizes, icon assets) and paints them as a permanent `Panel::top`, a foreground `Area` below it, and palette widgets. All egui-specific parametrization lives here.
 - `adapters/window.rs` — the "driven" adapter plus the bridge that applies commands to the egui context.
 - `src/main.rs` — composition root only: wires the layers and calls `run_native`. No business logic.
@@ -100,7 +99,7 @@ samcad/
 │   │   └── tool.rs                # ToolController use case
 │   ├── presentation/
 │   │   ├── mod.rs
-│   │   ├── component.rs           # Component, IconId, MenuAction, WindowButton
+│   │   ├── component.rs           # Component, IconId, MenuAction, MenuItem, WindowButton
 │   │   ├── main_bar.rs            # permanent bar: title + window controls
 │   │   ├── palette.rs             # builds the palette component tree + tests
 │   │   └── top_bar.rs             # auto-hide state machine + File menu view model
@@ -110,6 +109,7 @@ samcad/
 │       └── ui/
 │           ├── mod.rs
 │           ├── app.rs             # SamcadApp + native_options()
+│           ├── canvas.rs          # central drawing area + CAD cursor
 │           ├── theme.rs           # sizes + IconId -> SVG asset mapping
 │           ├── cursor.rs          # embedded bitmap crosshair cursor for the canvas
 │           ├── main_bar.rs         # permanent Panel::top with title + controls

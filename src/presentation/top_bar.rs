@@ -66,26 +66,27 @@ impl TopBarState {
 }
 
 /// A top-level menu, e.g. "File".
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Menu {
     pub label: &'static str,
-    pub items: Vec<MenuItem>,
+    pub items: &'static [MenuItem],
 }
 
 /// The cooked contents of the dynamic bar: menus only. The version title and
 /// window controls belong to the permanent main bar.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TopBarModel {
-    pub menus: Vec<Menu>,
+    pub menus: &'static [Menu],
 }
 
 /// Build the dynamic bar view model. All product decisions live here; the egui
-/// adapter only maps these values onto widgets.
-pub fn view_model() -> TopBarModel {
+/// adapter only maps these values onto widgets. The model is static, so
+/// painting the bar every frame allocates nothing.
+pub const fn view_model() -> TopBarModel {
     TopBarModel {
-        menus: vec![Menu {
+        menus: &[Menu {
             label: "File",
-            items: vec![
+            items: &[
                 MenuItem {
                     label: "New Project",
                     action: MenuAction::NewProject,

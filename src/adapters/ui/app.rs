@@ -4,7 +4,7 @@ use crate::adapters::window::WindowActionBridge;
 use crate::core::ports::{ToolUseCase, WindowUseCase};
 use crate::presentation::top_bar::TopBarState;
 
-use super::{cursor, main_bar, theme::Theme, tool_panel, top_bar};
+use super::{canvas, main_bar, theme::Theme, tool_panel, top_bar};
 
 /// eframe application: translates user input into use-case calls and renders
 /// the result. It contains no business logic.
@@ -52,21 +52,13 @@ impl eframe::App for SamcadApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.window_bridge.apply_to(ui.ctx());
 
-        // The permanent bar reserves space; the dynamic one overlays just
-        // below it, so neither covers the tool palette.
+        // The main bar reserves space at the top and the tool palette reserves
+        // space on the left; the dynamic bar is an overlay drawn on top of them.
         main_bar::show(ui, self.window.as_ref(), &self.theme);
         tool_panel::show(ui, self.tools.as_ref(), &self.theme);
         top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
-        // Empty drawing canvas for now. Over the working zone the pointer
-        // becomes the CAD-style bitmap crosshair from pointer.jpeg; elsewhere
-        // widgets keep their normal cursor.
-        egui::CentralPanel::default().show(ui, |ui| {
-            if ui.ui_contains_pointer() {
-                ui.ctx().set_cursor_image(Some(cursor::crosshair().clone()));
-                // Fallback for integrations that cannot display a bitmap.
-                ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
-            }
-        });
+        // Drawing canvas, filled last so the panels keep their reserved space.
+        canvas::show(ui);
     }
 }

@@ -1,7 +1,7 @@
 use eframe::egui;
 
 use crate::core::ports::ToolUseCase;
-use crate::presentation::component::{Component, Emphasis};
+use crate::presentation::component::Component;
 use crate::presentation::palette;
 
 use super::theme::Theme;
@@ -14,7 +14,7 @@ pub fn show(ui: &mut egui::Ui, tools: &dyn ToolUseCase, theme: &Theme) {
         .show(ui, |ui| {
             ui.vertical_centered(|ui| {
                 // No reserved space: the dynamic bar floats over this panel.
-                for component in palette::components(tools) {
+                for component in palette::components(tools.selected()) {
                     paint(ui, component, theme, tools);
                 }
             });
@@ -23,14 +23,6 @@ pub fn show(ui: &mut egui::Ui, tools: &dyn ToolUseCase, theme: &Theme) {
 
 fn paint(ui: &mut egui::Ui, component: Component, theme: &Theme, tools: &dyn ToolUseCase) {
     match component {
-        Component::Label { text, emphasis } => match emphasis {
-            Emphasis::Strong => {
-                ui.label(egui::RichText::new(text).small().strong());
-            }
-            Emphasis::Normal => {
-                ui.label(text);
-            }
-        },
         Component::Separator => {
             ui.separator();
         }

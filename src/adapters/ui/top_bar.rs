@@ -42,7 +42,7 @@ pub fn show(ctx: &egui::Context, state: &mut TopBarState, theme: &Theme) {
                 .fill(ui.style().visuals.panel_fill)
                 .inner_margin(egui::Margin::symmetric(8, 4))
                 .show(ui, |ui| {
-                    paint_menus(ui, &model.menus, theme);
+                    paint_menus(ui, model.menus, theme);
                 });
         });
 }
@@ -53,7 +53,7 @@ fn paint_menus(ui: &mut egui::Ui, menus: &[top_bar::Menu], theme: &Theme) {
             let label = egui::RichText::new(menu.label).size(theme.menu_font_size);
             let button = egui::Button::new(label).min_size(theme.menu_button_size);
             egui::menu::MenuButton::from_button(button).ui(ui, |ui| {
-                for item in &menu.items {
+                for item in menu.items {
                     let item_label = egui::RichText::new(item.label).size(theme.menu_font_size);
                     let item_button = egui::Button::new(item_label).min_size(theme.menu_item_size);
                     if ui.add(item_button).clicked() {
