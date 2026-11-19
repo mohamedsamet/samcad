@@ -31,8 +31,10 @@ impl DrawingUseCase for DrawingController {
         self.document.borrow_mut().add_point(point);
     }
 
-    fn points(&self) -> Vec<Point> {
-        self.document.borrow().points().to_vec()
+    fn for_each_point(&self, visit: &mut dyn FnMut(&Point)) {
+        for point in self.document.borrow().points() {
+            visit(point);
+        }
     }
 }
 
@@ -40,16 +42,22 @@ impl DrawingUseCase for DrawingController {
 mod tests {
     use super::*;
 
+    fn points(drawing: &DrawingController) -> Vec<Point> {
+        let mut points = Vec::new();
+        drawing.for_each_point(&mut |point| points.push(*point));
+        points
+    }
+
     #[test]
     fn adds_points_to_the_document() {
         let drawing = DrawingController::new();
-        assert!(drawing.points().is_empty());
+        assert!(points(&drawing).is_empty());
 
         drawing.add_point(Point { x: 10.0, y: 20.0 });
         drawing.add_point(Point { x: 30.0, y: 40.0 });
 
         assert_eq!(
-            drawing.points(),
+            points(&drawing),
             [Point { x: 10.0, y: 20.0 }, Point { x: 30.0, y: 40.0 }]
         );
     }

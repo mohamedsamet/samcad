@@ -2,6 +2,7 @@ use eframe::egui;
 
 use crate::adapters::window::WindowActionBridge;
 use crate::core::ports::{DrawingUseCase, ToolUseCase, WindowUseCase};
+use crate::presentation::canvas::Camera;
 use crate::presentation::top_bar::TopBarState;
 
 use super::{canvas, main_bar, theme::Theme, tool_panel, top_bar};
@@ -15,6 +16,7 @@ pub struct SamcadApp {
     window_bridge: WindowActionBridge,
     theme: Theme,
     top_bar: TopBarState,
+    camera: Camera,
 }
 
 impl SamcadApp {
@@ -35,6 +37,7 @@ impl SamcadApp {
             window_bridge,
             theme: Theme::default(),
             top_bar: TopBarState::default(),
+            camera: Camera::default(),
         }
     }
 }
@@ -67,6 +70,12 @@ impl eframe::App for SamcadApp {
         top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
         // Drawing canvas, filled last so the panels keep their reserved space.
-        canvas::show(ui, self.tools.as_ref(), self.drawing.as_ref(), &self.theme);
+        canvas::show(
+            ui,
+            self.tools.as_ref(),
+            self.drawing.as_ref(),
+            &mut self.camera,
+            &self.theme,
+        );
     }
 }

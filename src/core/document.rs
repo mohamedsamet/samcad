@@ -1,8 +1,8 @@
 //! Drawing document entities and the document container.
 //!
-//! Coordinates are stored as `f64`. Until a viewport transform exists they are
-//! canvas-local coordinates, so a point survives layout changes but not zoom or
-//! pan. A camera will later map them to world/screen space.
+//! Coordinates are stored as `f64` in drawing/world units. Presentation maps
+//! them to canvas-local screen points through its camera, so a point survives
+//! layout changes, zooming and panning.
 
 /// A 2D point.
 #[derive(Clone, Copy, Debug, PartialEq)]

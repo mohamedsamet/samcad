@@ -24,8 +24,10 @@ pub trait DrawingUseCase {
     /// Adds a point to the document.
     fn add_point(&self, point: Point);
 
-    /// Snapshot of the points to render.
-    fn points(&self) -> Vec<Point>;
+    /// Visits every point without allocating a snapshot.
+    ///
+    /// This keeps painting allocation-free even as the document grows.
+    fn for_each_point(&self, visit: &mut dyn FnMut(&Point));
 }
 
 /// Driven port (outbound): a capability the application needs from the

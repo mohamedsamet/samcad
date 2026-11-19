@@ -59,6 +59,8 @@
 | FR-35 | P1 | Ruler/guides & measured distances | Temporary dimension while drawing |
 | FR-36 | P2 | Multiple viewports / named views | Save and recall zoomed views |
 
+Implemented so far: wheel zoom anchored at the cursor (Ctrl+wheel and trackpad pinch also work), clamped to 0.01–10 000 px per world unit; middle-drag pan; and primary-drag pan while no tool is active. Still pending for FR-30: space-drag pan and zoom-to-fit. FR-31 (adaptive grid) is not implemented yet.
+
 ## 5. Layers & styles
 
 | ID | Priority | Requirement | Acceptance criteria |

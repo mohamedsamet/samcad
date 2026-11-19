@@ -43,7 +43,7 @@ src/
 │   └── drawing.rs           # DrawingController implements DrawingUseCase
 ├── presentation/
 │   ├── mod.rs
-│   ├── canvas.rs            # click action + paint-ready point view model
+│   ├── canvas.rs            # camera (zoom/pan) + click action
 │   ├── component.rs         # Component / IconId / MenuAction / MenuItem / WindowButton — no egui
 │   ├── main_bar.rs          # permanent bar view model (title + window controls)
 │   ├── palette.rs           # builds the palette component tree from tool state
@@ -70,7 +70,9 @@ Flow for the tool palette: the adapter reads `tools.selected()` and passes it as
 
 Two bars: `presentation::main_bar::view_model()` supplies the title and window controls to `adapters/ui/main_bar.rs`, which paints a permanent `Panel::top`. `presentation::top_bar` supplies the auto-hide state machine and the dynamic bar's menu-only view model; `adapters/ui/top_bar.rs` paints it as a foreground `egui::Area` anchored immediately below the main bar. Each frame the adapter feeds cursor Y and time into `TopBarState::update()` with the bottom edge of both bars as the reveal height: the dynamic bar appears when the cursor reaches that height, stays while the cursor is on either bar, and hides 10 s after the cursor leaves both; `TopBarState::notify_click()` dismisses it immediately on a click below that height. All of this is unit-tested without a window. The bar is a foreground `Area` that floats over the tool palette (no space is reserved for it there), and its File / New Project buttons use larger minimum sizes from `Theme`. Clicking **File → New Project / Save / Export** closes the menu via `ui.close()`; the actual operations are deferred (FR-01, FR-02, FR-05–FR-06). The tool palette has no "Tools" heading and uses larger 48×48 buttons (28×28 icons).
 
-Flow for a canvas click: `adapters/ui/canvas.rs` allocates the whole `CentralPanel` as a clickable area, converts the pointer position to canvas-local coordinates, and asks `presentation::canvas::click_action(selected, x, y)` what to do. With the Point tool it returns `AddPoint`; the adapter maps that to `DrawingUseCase::add_point()` on `DrawingController`, which appends to the `Document`. Each frame the adapter asks `DrawingUseCase::points()` and then `presentation::canvas::view_model()` to obtain paint-ready `CanvasPoint`s; it paints each as a white circle of `Theme::point_radius` at `rect.min + point`. Coordinates are canvas-local until a viewport transform (zoom/pan) lands.
+Flow for canvas input: `adapters/ui/canvas.rs` allocates the whole `CentralPanel` with `Sense::click_and_drag()`. On hover it reads `smooth_scroll_delta` for the wheel (and `zoom_delta` for Ctrl+wheel / trackpad pinch) and calls `presentation::canvas::Camera::zoom_around(cursor, factor)`, which keeps the world point under the cursor fixed and clamps the zoom to 0.01–10 000 px per world unit; middle-drag and primary-drag (only when no tool is active, so it never competes with click-to-draw) call `Camera::pan_by()`. A primary click converts the pointer position with `Camera::screen_to_world()` and asks `click_action(selected, world)`. With the Point tool it returns `AddPoint`; the adapter calls `DrawingUseCase::add_point()` on `DrawingController`, which appends to the `Document`. Painting calls `DrawingUseCase::for_each_point()` and `Camera::world_to_screen()`, rejecting points outside the viewport before drawing each white circle of `Theme::point_radius`. World coordinates are `f64` with Y up; canvas-local screen coordinates are `f32` with Y down, and the camera performs the flip. Geometry that predates a units/viewport transform is stored in canvas-independent world units, so it survives zooming and panning.
+
+Canvas performance: egui is reactive, so an idle canvas schedules no frames; zoom and pan are O(1) per input event, and painting is a linear scan with a cheap bounds reject. `for_each_point()` visits the document in place through `&mut dyn FnMut`, so no snapshot or per-frame allocation is made. When entity counts grow, a spatial index (grid/quadtree) and a bounds query on the port — or cached tessellation — can replace the linear scan without changing presentation.
 
 Canvas cursor: when the pointer is inside the `CentralPanel`, `adapters/ui/canvas.rs` calls `set_cursor_image()` with the crosshair-with-pickbox bitmap from `adapters/ui/cursor.rs`. The bitmap is embedded as raw RGBA (`include_bytes!`, no runtime image-decoding dependency), cached in a `OnceLock` so egui-winit can dedupe it by `Arc` pointer, and falls back to `egui::CursorIcon::Crosshair` on integrations that cannot display bitmaps. Outside the canvas the custom image is not set, so widgets keep their normal cursor. The Point tool icon is a simple filled dot with a faint ring, distinct from the canvas crosshair.
 
@@ -128,7 +130,7 @@ struct EntityCommon {
 | Screen / egui | logical pt (f32) | top-left | Y down; egui convention |
 | Paper (export) | mm/pt | page origin | PDF/DXF export transform |
 
-`ViewTransform { pan: Vec2<f64>, zoom: f64, dpi }` converts world→screen with a Y flip. Zoom is around the cursor (keep the world point under the mouse fixed).
+`ViewTransform { pan: Vec2<f64>, zoom: f64, dpi }` converts world→screen with a Y flip. Zoom is around the cursor (keep the world point under the mouse fixed). The current `presentation::canvas::Camera` already implements this mapping (origin + zoom, Y flip) in canvas-local units; the millimetre-based `ViewTransform` will replace it once units land.
 
 ## Command & undo architecture
 
