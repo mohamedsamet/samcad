@@ -2,7 +2,7 @@
 
 Lightweight 2D CAD application — desktop UI foundation.
 
-The current step is intentionally minimal: a full-screen, frameless window with two top bars. The **main bar** is always visible and holds the centered **SamCad vX.Y.Z** title plus **Minimize** `−` / **Close** `×` controls. Just below it sits a **dynamic bar** that floats over the tool palette and contains only a **File** menu (**New Project**, **Save**, **Export**) with enlarged buttons and text; it is hidden until the cursor reaches the bar's height, stays while the cursor is over either bar, hides again 10 s after the cursor leaves, and can be dismissed immediately by clicking outside it. The left tool palette has five equally sized 48×48 SVG icon buttons (**Point**, **Line**, **Circle**, **Rectangle**, **Arc**) with no "Tools" heading — the tool name appears on hover and the selected button is highlighted. The working area shows a CAD-style bitmap crosshair cursor (a full crosshair with a small pickbox at its centre); elsewhere widgets keep their normal cursor. With the **Point** tool selected, clicking in the drawing area adds a white 2 px point marker that persists for the session. Other tools still only select themselves; there is no file persistence or database yet.
+The current step is intentionally minimal: a full-screen, frameless window with two top bars. The **main bar** is always visible and holds the centered **SamCad vX.Y.Z** title plus **Minimize** `−` / **Close** `×` controls. Just below it sits a **dynamic bar** that floats over the tool palette and contains only a **File** menu (**New Project**, **Save**, **Export**) with enlarged buttons and text; it is hidden until the cursor reaches the bar's height, stays while the cursor is over either bar, hides again 10 s after the cursor leaves, and can be dismissed immediately by clicking outside it. The left tool palette has five equally sized 48×48 SVG icon buttons (**Point**, **Line**, **Circle**, **Rectangle**, **Arc**) with no "Tools" heading — the tool name appears on hover and the selected button is highlighted. The working area shows a CAD-style bitmap crosshair cursor (a full crosshair with a small pickbox at its centre); elsewhere widgets keep their normal cursor. The drawing area is an **infinite canvas**: the mouse wheel zooms around the cursor (0.01–10 000 px per drawing unit), middle-drag pans, and primary-drag pans while no tool is active. Only points inside the view are painted, and painting visits the document in place without allocating, so idle frames do no work. With the **Point** tool selected, clicking in the drawing area adds a white 2 px point marker that persists for the session. Other tools still only select themselves; there is no file persistence or database yet.
 
 Product requirements and stack research live in [`requirements/docs/`](requirements/docs/README.md).
 
@@ -32,7 +32,7 @@ From the project root:
 cargo run
 ```
 
-A full-screen window opens with an empty drawing area. Select the **Point** tool in the left palette, then click anywhere in the drawing area to place a white point marker. Press **Esc** to clear the active tool. The top bar with the version title and the `−` / `×` window controls is always visible. Move the cursor up to the height of the second, dynamic bar just below the main bar — it floats over the tool palette and contains the enlarged **File** menu (**New Project**, **Save**, **Export** — each entry currently just closes the menu). It hides again 10 seconds after the cursor leaves both bars, or immediately if you click outside it. `Alt+F4` / `Ctrl+Q` also work, depending on your desktop environment.
+A full-screen window opens with an empty drawing area. Select the **Point** tool in the left palette, then click anywhere in the drawing area to place a white point marker. Press **Esc** to clear the active tool. Zoom with the mouse wheel (anchored at the cursor) and pan by dragging with the middle mouse button — or with the primary button while no tool is selected. The top bar with the version title and the `−` / `×` window controls is always visible. Move the cursor up to the height of the second, dynamic bar just below the main bar — it floats over the tool palette and contains the enlarged **File** menu (**New Project**, **Save**, **Export** — each entry currently just closes the menu). It hides again 10 seconds after the cursor leaves both bars, or immediately if you click outside it. `Alt+F4` / `Ctrl+Q` also work, depending on your desktop environment.
 
 To build and run the optimized binary directly:
 
@@ -50,10 +50,21 @@ Two direct dependencies:
 ## Other useful commands
 
 ```bash
-cargo test           # run unit tests (tool state, palette, both bars, auto-hide + menu)
+cargo test           # run unit tests (tool state, palette, bars, menu, camera, drawing)
 cargo fmt --check    # verify formatting
 cargo clippy         # lint the code
 ```
+
+Coverage uses `cargo-llvm-cov`:
+
+```bash
+rustup component add llvm-tools-preview
+cargo install cargo-llvm-cov --locked
+cargo llvm-cov --lcov --output-path target/coverage/lcov.info
+python3 scripts/coverage_gate.py target/coverage/lcov.info 80
+```
+
+The gate measures production lines (inline `#[cfg(test)]` modules excluded) in `core`, `application`, `presentation` and the pure adapter helpers; the eframe/egui shell is excluded because it needs a live window. CI enforces the 80% threshold.
 
 ## Architecture
 
@@ -101,7 +112,7 @@ samcad/
 │   │   └── drawing.rs             # DrawingController use case
 │   ├── presentation/
 │   │   ├── mod.rs
-│   │   ├── canvas.rs              # click action + paint-ready point view model
+│   │   ├── canvas.rs              # camera (zoom/pan) + click action
 │   │   ├── component.rs           # Component, IconId, MenuAction, MenuItem, WindowButton
 │   │   ├── main_bar.rs            # permanent bar: title + window controls
 │   │   ├── palette.rs             # builds the palette component tree + tests
@@ -112,7 +123,7 @@ samcad/
 │       └── ui/
 │           ├── mod.rs
 │           ├── app.rs             # SamcadApp + native_options()
-│           ├── canvas.rs          # central drawing area + CAD cursor
+│           ├── canvas.rs          # central drawing area, input → camera, paint
 │           ├── theme.rs           # sizes + IconId -> SVG asset mapping
 │           ├── cursor.rs          # embedded bitmap crosshair cursor for the canvas
 │           ├── main_bar.rs         # permanent Panel::top with title + controls
