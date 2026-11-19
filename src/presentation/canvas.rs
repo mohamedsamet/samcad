@@ -170,6 +170,33 @@ mod tests {
     }
 
     #[test]
+    fn invalid_zoom_factors_are_ignored() {
+        let mut camera = Camera::default();
+        let anchor = ScreenPoint { x: 40.0, y: 30.0 };
+        let before = camera.screen_to_world(anchor.x, anchor.y);
+
+        for factor in [f32::NAN, f32::INFINITY, 0.0, -2.0] {
+            camera.zoom_around(anchor.x, anchor.y, factor);
+        }
+
+        assert_eq!(camera.zoom(), 1.0);
+        assert_eq!(camera.screen_to_world(anchor.x, anchor.y), before);
+    }
+
+    #[test]
+    fn zooming_at_the_limit_is_a_no_op() {
+        let mut camera = Camera::default();
+        camera.zoom_around(0.0, 0.0, MAX_ZOOM);
+        assert_eq!(camera.zoom(), MAX_ZOOM);
+
+        // Still clamped to MAX_ZOOM, so the camera must not move.
+        let before = camera.screen_to_world(10.0, 10.0);
+        camera.zoom_around(10.0, 10.0, 2.0);
+        assert_eq!(camera.zoom(), MAX_ZOOM);
+        assert_eq!(camera.screen_to_world(10.0, 10.0), before);
+    }
+
+    #[test]
     fn pan_moves_content_with_the_drag() {
         let mut camera = Camera::default();
 

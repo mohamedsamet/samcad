@@ -53,3 +53,41 @@ impl Theme {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_theme_keeps_the_expected_metrics() {
+        let theme = Theme::default();
+
+        assert_eq!(theme.main_bar_height, 32.0);
+        assert_eq!(theme.top_bar_height, 40.0);
+        assert_eq!(theme.panel_width, 64.0);
+        assert_eq!(theme.menu_font_size, 16.0);
+        assert_eq!(theme.point_radius, 2.0);
+        assert_eq!(theme.point_color, egui::Color32::WHITE);
+    }
+
+    #[test]
+    fn every_icon_maps_to_its_embedded_svg() {
+        let theme = Theme::default();
+        let icons = [
+            (IconId::Point, "bytes://icons/point.svg"),
+            (IconId::Line, "bytes://icons/line.svg"),
+            (IconId::Circle, "bytes://icons/circle.svg"),
+            (IconId::Rectangle, "bytes://icons/rectangle.svg"),
+            (IconId::Arc, "bytes://icons/arc.svg"),
+        ];
+
+        for (icon, expected) in icons {
+            match theme.icon_source(icon) {
+                egui::ImageSource::Bytes { uri, .. } => {
+                    assert_eq!(uri.as_ref(), expected);
+                }
+                _ => panic!("expected an embedded SVG for {icon:?}"),
+            }
+        }
+    }
+}

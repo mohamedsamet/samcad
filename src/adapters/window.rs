@@ -59,3 +59,34 @@ impl WindowActionBridge {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn queued_actions_become_viewport_commands() {
+        let (actions, bridge) = WindowActionAdapter::channel();
+        let ctx = egui::Context::default();
+
+        actions.minimize();
+        actions.close();
+
+        let output = ctx.run_pass(egui::RawInput::default(), |ctx| bridge.apply_to(ctx));
+        let commands = &output.viewport_output[&egui::ViewportId::ROOT].commands;
+
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, egui::ViewportCommand::Minimized(true)))
+        );
+        assert!(
+            commands
+                .iter()
+                .any(|command| matches!(command, egui::ViewportCommand::Close))
+        );
+
+        // The test renders no textures; releasing them is mandatory.
+        output.drop_without_applying_deltas();
+    }
+}

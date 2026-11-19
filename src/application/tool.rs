@@ -67,4 +67,9 @@ mod tests {
         tools.deselect();
         assert_eq!(tools.selected(), None);
     }
+
+    #[test]
+    fn default_controller_has_no_tool_selected() {
+        assert_eq!(ToolController::default().selected(), None);
+    }
 }

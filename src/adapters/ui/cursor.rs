@@ -21,3 +21,21 @@ pub fn crosshair() -> &'static egui::CustomCursorImage {
         hotspot: [CURSOR_SIZE / 2, CURSOR_SIZE / 2],
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn crosshair_is_cached_centered_and_complete() {
+        let first = crosshair();
+        let second = crosshair();
+
+        assert!(std::ptr::eq(first, second));
+        assert_eq!(first.size, [CURSOR_SIZE, CURSOR_SIZE]);
+        assert_eq!(first.hotspot, [CURSOR_SIZE / 2, CURSOR_SIZE / 2]);
+
+        let pixels = usize::from(CURSOR_SIZE) * usize::from(CURSOR_SIZE);
+        assert_eq!(first.rgba.len(), pixels * 4);
+    }
+}

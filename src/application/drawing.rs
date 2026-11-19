@@ -61,4 +61,10 @@ mod tests {
             [Point { x: 10.0, y: 20.0 }, Point { x: 30.0, y: 40.0 }]
         );
     }
+
+    #[test]
+    fn default_controller_starts_empty() {
+        let drawing = DrawingController::default();
+        assert!(points(&drawing).is_empty());
+    }
 }
