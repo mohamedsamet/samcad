@@ -22,10 +22,11 @@
 
 - Workspace crates: `core`, `io`, `app`, `cli` skeleton.
 - Document model, layers, view transform, command history/undo.
-- Tools: line, polyline, rectangle, circle, arc, text.
+- Tools: line, polyline, rectangle, circle, arc, text, point.
 - Selection (click + window), move, delete, property editing (basic).
 - Grid, pan/zoom/zoom-to-fit, coordinate readout, snapping (grid/endpoint), ortho.
 - Native `.samcad` save/load, autosave recovery.
+- Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y and Ctrl+Shift+Z (redo), Escape (clear tool).
 
 **Exit criteria:** A user can draw, edit, undo and save/reopen a layout; `cargo test` green; no crashes on normal use.
 

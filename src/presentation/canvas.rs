@@ -7,6 +7,7 @@
 
 use crate::core::document::Point;
 use crate::core::model::Tool;
+use crate::core::ports::DrawingUseCase;
 
 /// Smallest allowed zoom, in screen points per world unit.
 pub const MIN_ZOOM: f32 = 0.01;
@@ -107,9 +108,104 @@ pub fn click_action(tool: Option<Tool>, point: Point) -> Option<CanvasAction> {
     matches!(tool, Some(Tool::Point)).then_some(CanvasAction::AddPoint(point))
 }
 
+/// A target that the cursor can snap to.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SnapTarget {
+    Point(Point),
+}
+
+impl SnapTarget {
+    /// Returns the exact world coordinates of the snap target center/position.
+    pub fn world_point(&self) -> Point {
+        match *self {
+            SnapTarget::Point(point) => point,
+        }
+    }
+}
+
+/// Finds the closest snap target within `snap_radius_px` screen pixels of
+/// screen coordinates `(x, y)`. Returns `None` when no target is within range.
+pub fn find_snap_target(
+    drawing: &dyn DrawingUseCase,
+    camera: &Camera,
+    cursor_screen_x: f32,
+    cursor_screen_y: f32,
+    snap_radius_px: f32,
+) -> Option<SnapTarget> {
+    let mut closest: Option<(SnapTarget, f32)> = None;
+    let radius_sq = snap_radius_px * snap_radius_px;
+
+    drawing.for_each_point(&mut |point| {
+        let screen = camera.world_to_screen(point);
+        let dx = screen.x - cursor_screen_x;
+        let dy = screen.y - cursor_screen_y;
+        let dist_sq = dx * dx + dy * dy;
+
+        if dist_sq <= radius_sq {
+            match closest {
+                None => closest = Some((SnapTarget::Point(*point), dist_sq)),
+                Some((_, best_dist_sq)) => {
+                    if dist_sq < best_dist_sq {
+                        closest = Some((SnapTarget::Point(*point), dist_sq));
+                    }
+                }
+            }
+        }
+    });
+
+    closest.map(|(target, _)| target)
+}
+
+/// Default snap radius in screen pixels.
+pub const SNAP_RADIUS_PX: f32 = 10.0;
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct MockDrawing {
+        points: Vec<Point>,
+    }
+
+    impl DrawingUseCase for MockDrawing {
+        fn add_point(&self, _: Point) {}
+        fn for_each_point(&self, visit: &mut dyn FnMut(&Point)) {
+            for p in &self.points {
+                visit(p);
+            }
+        }
+        fn undo(&self) -> bool { false }
+        fn redo(&self) -> bool { false }
+        fn can_undo(&self) -> bool { false }
+        fn can_redo(&self) -> bool { false }
+    }
+
+    #[test]
+    fn find_snap_target_finds_closest_point_within_radius() {
+        let drawing = MockDrawing {
+            points: vec![
+                Point { x: 0.0, y: 0.0 },
+                Point { x: 50.0, y: 0.0 }, // Far away
+            ],
+        };
+        let camera = Camera::default();
+        
+        // Inside radius of point (0,0)
+        let target = find_snap_target(&drawing, &camera, 5.0, 5.0, 10.0);
+        assert_eq!(target, Some(SnapTarget::Point(Point { x: 0.0, y: 0.0 })));
+    }
+
+    #[test]
+    fn find_snap_target_ignores_points_outside_radius() {
+        let drawing = MockDrawing {
+            points: vec![Point { x: 100.0, y: 100.0 }],
+        };
+        let camera = Camera::default();
+        
+        // Outside radius
+        let target = find_snap_target(&drawing, &camera, 0.0, 0.0, 10.0);
+        assert_eq!(target, None);
+    }
 
     fn assert_close(actual: f32, expected: f32) {
         assert!(

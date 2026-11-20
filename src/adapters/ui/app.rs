@@ -109,7 +109,6 @@ where
             &self.tools,
             &self.drawing,
             &mut self.camera,
-            &self.theme,
         );
     }
 }

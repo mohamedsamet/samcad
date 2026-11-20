@@ -1,10 +1,11 @@
 use eframe::egui;
 
+use crate::adapters::config::load_config;
+use crate::core::document::Point;
 use crate::core::ports::{DrawingUseCase, ToolUseCase};
-use crate::presentation::canvas::{self, Camera, CanvasAction};
+use crate::presentation::canvas::{self, Camera, CanvasAction, SnapTarget};
 
 use super::cursor;
-use super::theme::Theme;
 
 /// Wheel sensitivity: a notch of ~50 points gives roughly a 10% zoom step.
 const ZOOM_SENSITIVITY: f32 = 0.002;
@@ -12,16 +13,18 @@ const ZOOM_SENSITIVITY: f32 = 0.002;
 /// Renders the central drawing canvas, the infinite-canvas camera and the CAD
 /// cursor.
 ///
-/// Presentation decides what a click means and how world coordinates map to the
-/// screen; this module only feeds pointer input to the camera and paints the
-/// visible points.
+/// Presentation decides what a click means, how world coordinates map to the
+/// screen, and which target the cursor is snapped to; this module only feeds
+/// pointer input to the camera and paints the visible geometry.
 pub fn show(
     ui: &mut egui::Ui,
     tools: &dyn ToolUseCase,
     drawing: &dyn DrawingUseCase,
     camera: &mut Camera,
-    theme: &Theme,
 ) {
+    // Load adapter config once per frame (cheap; reads from cached file).
+    let cfg = load_config();
+
     egui::CentralPanel::default().show(ui, |ui| {
         let rect = ui.max_rect();
         let response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
@@ -32,22 +35,71 @@ pub fn show(
             ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
         }
 
+        // Sticky snapping: while the cursor is within the snap radius of an
+        // existing target, geometry is placed at that target's exact world
+        // position instead of the raw cursor position.
+        let snap_target = response
+            .hover_pos()
+            .map(|pos| pos - rect.min)
+            .and_then(|screen| {
+                canvas::find_snap_target(
+                    drawing,
+                    camera,
+                    screen.x,
+                    screen.y,
+                    canvas::SNAP_RADIUS_PX,
+                )
+            });
+
+        let cursor_world = match snap_target {
+            Some(target) => target.world_point(),
+            None => response
+                .hover_pos()
+                .map(|pos| pos - rect.min)
+                .map(|local| camera.screen_to_world(local.x, local.y))
+                .unwrap_or(Point { x: 0.0, y: 0.0 }),
+        };
+
         update_camera(ui, &response, rect, tools, camera);
 
         if response.clicked()
-            && let Some(pos) = response.interact_pointer_pos()
+            && let Some(action) = canvas::click_action(tools.selected(), cursor_world)
         {
-            let local = pos - rect.min;
-            let world = camera.screen_to_world(local.x, local.y);
-            if let Some(action) = canvas::click_action(tools.selected(), world) {
-                match action {
-                    CanvasAction::AddPoint(point) => drawing.add_point(point),
-                }
+            match action {
+                CanvasAction::AddPoint(point) => drawing.add_point(point),
             }
         }
 
-        paint_points(ui, rect, drawing, camera, theme);
+        paint_points(ui, rect, drawing, camera, &cfg.graphics);
+        if let Some(target) = snap_target {
+            paint_snap_indicator(ui, rect, target, camera, &cfg.graphics);
+        }
     });
+}
+
+fn paint_snap_indicator(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    target: SnapTarget,
+    camera: &Camera,
+    graphics: &crate::adapters::config::GraphicsConfig,
+) {
+    let screen = camera.world_to_screen(&target.world_point());
+    if screen.x >= 0.0
+        && screen.x <= rect.width()
+        && screen.y >= 0.0
+        && screen.y <= rect.height()
+    {
+        // Use the configured snap colour, or fall back to egui's selection
+        // colour (the same highlight used for selected buttons).
+        let snap_color = graphics.snap_indicator_color;
+
+        ui.painter().circle_stroke(
+            rect.min + egui::vec2(screen.x, screen.y),
+            6.0,
+            egui::Stroke::new(1.5, snap_color),
+        );
+    }
 }
 
 /// Applies wheel zoom (anchored at the cursor) and drag panning.
@@ -92,12 +144,12 @@ fn paint_points(
     rect: egui::Rect,
     drawing: &dyn DrawingUseCase,
     camera: &Camera,
-    theme: &Theme,
+    graphics: &crate::adapters::config::GraphicsConfig,
 ) {
     let painter = ui.painter();
     let width = rect.width();
     let height = rect.height();
-    let margin = theme.point_radius;
+    let margin = graphics.point_radius;
 
     drawing.for_each_point(&mut |point| {
         let screen = camera.world_to_screen(point);
@@ -108,8 +160,8 @@ fn paint_points(
         {
             painter.circle_filled(
                 rect.min + egui::vec2(screen.x, screen.y),
-                theme.point_radius,
-                theme.point_color,
+                graphics.point_radius,
+                graphics.point_color,
             );
         }
     });
@@ -144,7 +196,7 @@ mod tests {
         let mut camera = Camera::default();
 
         harness.click(egui::pos2(300.0, 200.0), |ui| {
-            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+            show(ui, &tools, &drawing, &mut camera);
         });
 
         assert_eq!(
@@ -170,7 +222,7 @@ mod tests {
         let mut camera = Camera::default();
 
         harness.click(CURSOR, |ui| {
-            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+            show(ui, &tools, &drawing, &mut camera);
         });
 
         assert!(points(&drawing).is_empty());
@@ -185,7 +237,7 @@ mod tests {
         let anchor = CURSOR - CANVAS_ORIGIN;
         let before = camera.screen_to_world(anchor.x, anchor.y);
         let mut render = |ui: &mut egui::Ui| {
-            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+            show(ui, &tools, &drawing, &mut camera);
         };
 
         harness.frame(vec![moved(CURSOR)], &mut render);
@@ -206,7 +258,7 @@ mod tests {
         let mut camera = Camera::default();
         let end = egui::pos2(CURSOR.x + 50.0, CURSOR.y + 30.0);
         let mut render = |ui: &mut egui::Ui| {
-            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+            show(ui, &tools, &drawing, &mut camera);
         };
 
         harness.frame(vec![moved(CURSOR)], &mut render);
@@ -237,7 +289,7 @@ mod tests {
         let mut camera = Camera::default();
         let end = egui::pos2(CURSOR.x - 20.0, CURSOR.y - 10.0);
         let mut render = |ui: &mut egui::Ui| {
-            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+            show(ui, &tools, &drawing, &mut camera);
         };
 
         harness.frame(vec![moved(CURSOR)], &mut render);
@@ -259,5 +311,64 @@ mod tests {
             Point { x: 20.0, y: -10.0 }
         );
         assert!(points(&drawing).is_empty());
+    }
+
+    #[test]
+    fn cursor_snaps_to_point_within_radius() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+        tools.select(Tool::Point);
+        let drawing = DrawingController::new();
+        let mut camera = Camera::default();
+
+        // Place an existing point directly under the cursor so the click
+        // falls within the 10 px snap radius.
+        let cursor_world = camera.screen_to_world(
+            CURSOR.x - CANVAS_ORIGIN.x,
+            CURSOR.y - CANVAS_ORIGIN.y,
+        );
+        drawing.add_point(cursor_world);
+
+        let mut render = |ui: &mut egui::Ui| {
+            show(ui, &tools, &drawing, &mut camera);
+        };
+
+        harness.frame(vec![moved(CURSOR)], &mut render);
+        harness.click(CURSOR, render);
+
+        // The snapped click lands exactly on the existing point.
+        let pts = points(&drawing);
+        assert_eq!(pts.len(), 2);
+        assert_eq!(pts[0], pts[1]);
+    }
+
+    #[test]
+    fn snap_is_liberated_when_cursor_moves_far_away() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+        tools.select(Tool::Point);
+        let drawing = DrawingController::new();
+        let mut camera = Camera::default();
+
+        let existing = Point { x: 0.0, y: 0.0 };
+        drawing.add_point(existing);
+
+        let mut render = |ui: &mut egui::Ui| {
+            show(ui, &tools, &drawing, &mut camera);
+        };
+
+        // The existing point is hundreds of px away: the click is not snapped
+        // and lands at the raw cursor world position.
+        harness.frame(vec![moved(CURSOR)], &mut render);
+        harness.click(CURSOR, render);
+
+        let cursor_world = camera.screen_to_world(
+            CURSOR.x - CANVAS_ORIGIN.x,
+            CURSOR.y - CANVAS_ORIGIN.y,
+        );
+        let pts = points(&drawing);
+        assert_eq!(pts.len(), 2);
+        assert_eq!(pts[1], cursor_world);
+        assert_ne!(pts[1], existing);
     }
 }

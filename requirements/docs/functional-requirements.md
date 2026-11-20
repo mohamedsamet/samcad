@@ -1,6 +1,6 @@
 # Functional Requirements
 
-> Status: **Draft** · Last updated: 2026-11-19
+> Status: **Draft** · Last updated: 2026-11-20
 > Priority: **P0** = MVP · **P1** = first full release · **P2** = later
 
 ## 1. Document & file management
@@ -41,7 +41,7 @@
 | FR-20 | P0 | Select entity | Click to select; rubber-band/window select; shift-click to add to selection |
 | FR-21 | P0 | Move selection | Drag or typed offset; preview while dragging |
 | FR-22 | P0 | Delete selection | Delete key; selected entity removed |
-| FR-23 | P0 | Undo / redo | Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z); covers create/edit/delete and layer changes |
+| FR-23 | P0 | Undo / redo | Ctrl+Z for undo; Ctrl+Y and Ctrl+Shift+Z for redo; covers create/edit/delete and layer changes; integration tests verify shortcuts |
 | FR-24 | P1 | Edit properties panel | Change coordinates, radius, layer, color, line weight of selection |
 | FR-25 | P1 | Copy / repeat-offset | Duplicate selection with a displacement |
 | FR-26 | P1 | Trim/extend & fillet | Basic 2D editing operations on lines/arcs |
@@ -54,7 +54,7 @@
 | FR-30 | P0 | Pan and zoom | Mouse wheel zoom around cursor; middle-drag/space-drag pan; zoom-to-fit |
 | FR-31 | P0 | Infinite canvas with grid | Grid adaptive to zoom level; toggle visibility |
 | FR-32 | P0 | Coordinate readout | Cursor world coordinates shown in status bar |
-| FR-33 | P1 | Snap modes | Grid, endpoint, midpoint, center, intersection; toggle per mode |
+| FR-33 | P0 | Snap modes | Grid, endpoint (point entities), midpoint, center, intersection; toggle per mode. Point entity snapping implemented (10px radius, visual indicator) |
 | FR-34 | P1 | Orthogonal / polar constraint | Shift constrains angle to 45° increments (or toggle ortho) |
 | FR-35 | P1 | Ruler/guides & measured distances | Temporary dimension while drawing |
 | FR-36 | P2 | Multiple viewports / named views | Save and recall zoomed views |
@@ -83,6 +83,7 @@ Implemented so far: wheel zoom anchored at the cursor (Ctrl+wheel and trackpad p
 | FR-55 | P0 | Permanent main bar | Always displayed at the top; contains the version title in the center and Minimize / Close controls on the right |
 | FR-55a | P0 | Dynamic bar below the main bar | Hidden by default; floats immediately below the permanent main bar, over the tool palette, and contains only the File menu. Appears when the cursor reaches the bar's height; stays visible while the cursor is over either bar; hides 10 s after the cursor leaves both, or immediately on a click outside the bar |
 | FR-56 | P0 | File menu in the top bar | Clicking **File** opens a menu containing **New Project**, **Save** and **Export**; clicking any entry closes the menu |
+| FR-57 | P1 | Configuration file (`samcad.env`) | Simple `KEY=VALUE` file in the working directory to parameterize the app: theme colours (snap indicator, etc.), preferences; comments with `#`; missing file falls back to defaults |
 
 ## Out of scope (explicit)
 

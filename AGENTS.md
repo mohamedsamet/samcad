@@ -5,8 +5,6 @@
 
 ## Testing
 - BLOCKING: Do never run or add tests if it not implicitly requested in the prompt.
-- After each code imlementation, just say that tests are needed to handle 80% coverage.
-
 
 ## Coverage Gate
 
