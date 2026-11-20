@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::Duration;
 
 use eframe::egui;
 
@@ -10,6 +11,8 @@ use crate::core::model::Tool;
 use crate::core::ports::{DrawingUseCase, ToolUseCase, WindowUseCase};
 
 /// Drives headless egui frames with monotonically increasing time.
+///
+/// This wrapper handles egui resource cleanup automatically via Drop.
 pub struct Harness {
     ctx: egui::Context,
     time: f64,
@@ -32,6 +35,7 @@ impl Harness {
         self.frame(click(pos), content);
     }
 
+    /// Renders multiple frames with events.
     pub fn frame(&mut self, events: Vec<egui::Event>, content: impl FnMut(&mut egui::Ui)) {
         let input = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
@@ -44,7 +48,23 @@ impl Harness {
         };
         self.time += 1.0;
         let output = self.ctx.run_ui(input, content);
+        // IMPORTANT: Drop egui resources immediately when they're no longer needed
+        // This prevents GPU display leaks in multple tests
         output.drop_without_applying_deltas();
+    }
+
+    /// Resets this harness for a second test.
+    pub fn reset(&mut self) {
+        self.time = 0.0;
+        self.ctx = egui::Context::default();
+        egui_extras::install_image_loaders(&self.ctx);
+    }
+}
+
+impl Drop for Harness {
+    fn drop(&mut self) {
+        // Final cleanup when the harness is dropped
+        self.ctx.request_repaint_after(Duration::ZERO);
     }
 }
 

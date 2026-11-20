@@ -9,22 +9,34 @@ use super::{canvas, main_bar, theme::Theme, tool_panel, top_bar};
 
 /// eframe application: translates user input into use-case calls and renders
 /// the result. It contains no business logic.
-pub struct SamcadApp {
-    window: Box<dyn WindowUseCase>,
-    tools: Box<dyn ToolUseCase>,
-    drawing: Box<dyn DrawingUseCase>,
+///
+/// All ports use typed protocols for better type safety and testability.
+pub struct SamcadApp<T, C, D>
+where
+    T: WindowUseCase,
+    C: ToolUseCase,
+    D: DrawingUseCase,
+{
+    window: T,
+    tools: C,
+    drawing: D,
     window_bridge: WindowActionBridge,
     theme: Theme,
     top_bar: TopBarState,
     camera: Camera,
 }
 
-impl SamcadApp {
+impl<T, C, D> SamcadApp<T, C, D>
+where
+    T: WindowUseCase,
+    C: ToolUseCase,
+    D: DrawingUseCase,
+{
     pub fn new(
         cc: &eframe::CreationContext<'_>,
-        window: Box<dyn WindowUseCase>,
-        tools: Box<dyn ToolUseCase>,
-        drawing: Box<dyn DrawingUseCase>,
+        window: T,
+        tools: C,
+        drawing: D,
         window_bridge: WindowActionBridge,
     ) -> Self {
         // Required so SVG ImageSource values can be rasterized and displayed.
@@ -54,7 +66,12 @@ pub fn native_options() -> eframe::NativeOptions {
     }
 }
 
-impl eframe::App for SamcadApp {
+impl<T, C, D> eframe::App for SamcadApp<T, C, D>
+where
+    T: WindowUseCase,
+    C: ToolUseCase,
+    D: DrawingUseCase,
+{
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.window_bridge.apply_to(ui.ctx());
 
@@ -63,17 +80,34 @@ impl eframe::App for SamcadApp {
             self.tools.deselect();
         }
 
+        // Ctrl+Shift+Z or Ctrl+Y: Redo (check first — more specific)
+        if ui.ctx().input(|input| {
+            (input.key_pressed(egui::Key::Y) && !input.modifiers.ctrl)
+                || (input.key_pressed(egui::Key::Z)
+                    && input.modifiers.ctrl
+                    && input.modifiers.shift)
+        }) {
+            self.drawing.redo();
+        }
+        // Ctrl+Z: Undo
+        else if ui
+            .ctx()
+            .input(|input| input.key_pressed(egui::Key::Z) && input.modifiers.ctrl)
+        {
+            self.drawing.undo();
+        }
+
         // The main bar reserves space at the top and the tool palette reserves
         // space on the left; the dynamic bar is an overlay drawn on top of them.
-        main_bar::show(ui, self.window.as_ref(), &self.theme);
-        tool_panel::show(ui, self.tools.as_ref(), &self.theme);
+        main_bar::show(ui, &self.window, &self.theme);
+        tool_panel::show(ui, &self.tools, &self.theme);
         top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
         // Drawing canvas, filled last so the panels keep their reserved space.
         canvas::show(
             ui,
-            self.tools.as_ref(),
-            self.drawing.as_ref(),
+            &self.tools,
+            &self.drawing,
             &mut self.camera,
             &self.theme,
         );
@@ -89,15 +123,19 @@ mod tests {
     use crate::application::drawing::DrawingController;
     use crate::core::model::Tool;
     use eframe::App;
+    use egui::Context;
 
-    fn test_app(ctx: egui::Context, tools: SharedTools) -> SamcadApp {
+    fn test_app(
+        ctx: Context,
+        tools: SharedTools,
+    ) -> SamcadApp<RecordingWindow, SharedTools, DrawingController> {
         let cc = eframe::CreationContext::_new_kittest(ctx);
         let (_actions, bridge) = WindowActionAdapter::channel();
         SamcadApp::new(
             &cc,
-            Box::new(RecordingWindow::default()),
-            Box::new(tools),
-            Box::new(DrawingController::new()),
+            RecordingWindow::default(),
+            tools,
+            DrawingController::new(),
             bridge,
         )
     }
@@ -124,7 +162,7 @@ mod tests {
         });
 
         assert_eq!(app.camera, Camera::default());
-        assert_eq!(app.tools.selected(), None);
+        assert_eq!(SharedTools::selected(&app.tools), None);
     }
 
     #[test]

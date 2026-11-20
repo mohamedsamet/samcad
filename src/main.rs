@@ -3,9 +3,9 @@
 
 use samcad::adapters::ui::{SamcadApp, native_options};
 use samcad::adapters::window::WindowActionAdapter;
-use samcad::application::drawing::DrawingController;
-use samcad::application::tool::ToolController;
-use samcad::application::window::WindowController;
+use samcad::application::{
+    drawing::DrawingController, tool::ToolController, window::WindowController,
+};
 
 fn main() -> eframe::Result {
     // Driven adapter -> use cases -> driving adapter.
@@ -20,9 +20,9 @@ fn main() -> eframe::Result {
         Box::new(move |cc| {
             Ok(Box::new(SamcadApp::new(
                 cc,
-                Box::new(window),
-                Box::new(tools),
-                Box::new(drawing),
+                window,
+                tools,
+                drawing,
                 window_bridge,
             )))
         }),

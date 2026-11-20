@@ -26,6 +26,24 @@ impl Document {
         self.points.push(point);
     }
 
+    /// Removes a point at a specific index.
+    pub fn remove_point(&mut self, index: usize) -> Option<Point> {
+        if index < self.points.len() {
+            Some(self.points.remove(index))
+        } else {
+            None
+        }
+    }
+
+    /// Inserts a point at a specific index.
+    pub fn insert_point(&mut self, index: usize, point: Point) {
+        if index <= self.points.len() {
+            self.points.insert(index, point);
+        } else {
+            self.points.push(point);
+        }
+    }
+
     /// The points in the drawing, in insertion order.
     pub fn points(&self) -> &[Point] {
         &self.points

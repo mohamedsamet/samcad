@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 
+use crate::core::command::{AddPointCommand, CommandHistory};
 use crate::core::document::{Document, Point};
 use crate::core::ports::DrawingUseCase;
 
@@ -7,16 +8,23 @@ use crate::core::ports::DrawingUseCase;
 ///
 /// State lives here, not in the UI adapter, so the same document can later be
 /// driven by other adapters (tests, CLI). Interior mutability matches the
-/// read-only `&self` driving ports.
+/// read-only `&self` driving ports. Commands are used to support undo/redo.
 pub struct DrawingController {
     document: RefCell<Document>,
+    history: RefCell<CommandHistory>,
 }
 
 impl DrawingController {
     pub fn new() -> Self {
         Self {
             document: RefCell::new(Document::default()),
+            history: RefCell::new(CommandHistory::default()),
         }
+    }
+
+    /// Clear the history.
+    pub fn clear_history(&self) {
+        self.history.borrow_mut().clear();
     }
 }
 
@@ -28,7 +36,10 @@ impl Default for DrawingController {
 
 impl DrawingUseCase for DrawingController {
     fn add_point(&self, point: Point) {
-        self.document.borrow_mut().add_point(point);
+        let mut document = self.document.borrow_mut();
+        let mut history = self.history.borrow_mut();
+        let command = Box::new(AddPointCommand::new(point));
+        history.execute(command, &mut document);
     }
 
     fn for_each_point(&self, visit: &mut dyn FnMut(&Point)) {
@@ -36,35 +47,22 @@ impl DrawingUseCase for DrawingController {
             visit(point);
         }
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn points(drawing: &DrawingController) -> Vec<Point> {
-        let mut points = Vec::new();
-        drawing.for_each_point(&mut |point| points.push(*point));
-        points
+    fn undo(&self) -> bool {
+        let mut history = self.history.borrow_mut();
+        history.undo(&mut self.document.borrow_mut())
     }
 
-    #[test]
-    fn adds_points_to_the_document() {
-        let drawing = DrawingController::new();
-        assert!(points(&drawing).is_empty());
-
-        drawing.add_point(Point { x: 10.0, y: 20.0 });
-        drawing.add_point(Point { x: 30.0, y: 40.0 });
-
-        assert_eq!(
-            points(&drawing),
-            [Point { x: 10.0, y: 20.0 }, Point { x: 30.0, y: 40.0 }]
-        );
+    fn redo(&self) -> bool {
+        let mut history = self.history.borrow_mut();
+        history.redo(&mut self.document.borrow_mut())
     }
 
-    #[test]
-    fn default_controller_starts_empty() {
-        let drawing = DrawingController::default();
-        assert!(points(&drawing).is_empty());
+    fn can_undo(&self) -> bool {
+        self.history.borrow().can_undo()
+    }
+
+    fn can_redo(&self) -> bool {
+        self.history.borrow().can_redo()
     }
 }

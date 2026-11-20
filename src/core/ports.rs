@@ -28,6 +28,18 @@ pub trait DrawingUseCase {
     ///
     /// This keeps painting allocation-free even as the document grows.
     fn for_each_point(&self, visit: &mut dyn FnMut(&Point));
+
+    /// Undo the last operation.
+    fn undo(&self) -> bool;
+
+    /// Redo the last undone operation.
+    fn redo(&self) -> bool;
+
+    /// Can undo?
+    fn can_undo(&self) -> bool;
+
+    /// Can redo?
+    fn can_redo(&self) -> bool;
 }
 
 /// Driven port (outbound): a capability the application needs from the
