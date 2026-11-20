@@ -133,10 +133,15 @@ mod tests {
     use crate::core::keystore::KeyStoreError;
     use base64::Engine as _;
     use std::cell::RefCell;
+    use std::collections::HashMap;
     use std::rc::Rc;
 
+    type Files = Rc<RefCell<HashMap<PathBuf, String>>>;
+    type TestController = SaveController<MemFS, MemKeyStore>;
+    type ControllerWithFiles = (TestController, Files);
+
     struct MemFS {
-        files: Rc<RefCell<std::collections::HashMap<PathBuf, String>>>,
+        files: Files,
     }
 
     impl MemFS {
@@ -179,10 +184,7 @@ mod tests {
         }
     }
 
-    fn new_controller() -> (
-        SaveController<MemFS, MemKeyStore>,
-        Rc<RefCell<std::collections::HashMap<PathBuf, String>>>,
-    ) {
+    fn new_controller() -> ControllerWithFiles {
         let fs = MemFS::new();
         let files_ref = fs.files.clone();
         (SaveController::new(fs, MemKeyStore::new()), files_ref)
