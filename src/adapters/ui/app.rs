@@ -82,7 +82,7 @@ where
 
         // Ctrl+Shift+Z or Ctrl+Y: Redo (check first — more specific)
         if ui.ctx().input(|input| {
-            (input.key_pressed(egui::Key::Y) && !input.modifiers.ctrl)
+            (input.key_pressed(egui::Key::Y) && input.modifiers.ctrl)
                 || (input.key_pressed(egui::Key::Z)
                     && input.modifiers.ctrl
                     && input.modifiers.shift)
@@ -118,7 +118,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::adapters::ui::test_support::{Harness, RecordingWindow, SharedTools, moved};
+    use crate::adapters::ui::test_support::{Harness, RecordingWindow, SharedTools, moved, points};
     use crate::adapters::window::WindowActionAdapter;
     use crate::application::drawing::DrawingController;
     use crate::core::model::Tool;
@@ -185,5 +185,280 @@ mod tests {
         );
 
         assert_eq!(*tools.selected.borrow(), None);
+    }
+
+    #[test]
+    fn ctrl_z_undoes_last_point() {
+        let ctx = egui::Context::default();
+        let tools = SharedTools::default();
+        tools.select(Tool::Point);
+        let mut app = test_app(ctx.clone(), tools);
+        let mut harness = Harness::with_context(ctx);
+
+        // Add a point
+        harness.click(egui::pos2(100.0, 100.0), |ui| {
+            app.ui(ui, &mut eframe::Frame::_new_kittest());
+        });
+        assert_eq!(points(&app.drawing).len(), 1);
+
+        // Ctrl+Z: undo (press in frame 1, release in frame 2)
+        harness.frame(
+            vec![
+                egui::Event::ModifiersChanged(egui::Modifiers::CTRL),
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        harness.frame(
+            vec![
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::ModifiersChanged(egui::Modifiers::NONE),
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        eprintln!("After Ctrl+Z: {} points", points(&app.drawing).len());
+        assert_eq!(points(&app.drawing).len(), 0);
+    }
+
+    #[test]
+    fn ctrl_y_redoes_undone_point() {
+        let ctx = egui::Context::default();
+        let tools = SharedTools::default();
+        tools.select(Tool::Point);
+        let mut app = test_app(ctx.clone(), tools);
+        let mut harness = Harness::with_context(ctx);
+
+        // Add a point
+        harness.click(egui::pos2(100.0, 100.0), |ui| {
+            app.ui(ui, &mut eframe::Frame::_new_kittest());
+        });
+        assert_eq!(points(&app.drawing).len(), 1);
+
+        // Ctrl+Z: undo
+        harness.frame(
+            vec![
+                egui::Event::ModifiersChanged(egui::Modifiers::CTRL),
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        harness.frame(
+            vec![
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::ModifiersChanged(egui::Modifiers::NONE),
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        assert_eq!(points(&app.drawing).len(), 0);
+
+        // Ctrl+Y: redo
+        harness.frame(
+            vec![
+                egui::Event::ModifiersChanged(egui::Modifiers::CTRL),
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::Y,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        harness.frame(
+            vec![
+                egui::Event::Key {
+                    key: egui::Key::Y,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::ModifiersChanged(egui::Modifiers::NONE),
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        assert_eq!(points(&app.drawing).len(), 1);
+    }
+
+    #[test]
+    fn ctrl_shift_z_redoes_undone_point() {
+        let ctx = egui::Context::default();
+        let tools = SharedTools::default();
+        tools.select(Tool::Point);
+        let mut app = test_app(ctx.clone(), tools);
+        let mut harness = Harness::with_context(ctx);
+
+        // Add a point
+        harness.click(egui::pos2(100.0, 100.0), |ui| {
+            app.ui(ui, &mut eframe::Frame::_new_kittest());
+        });
+        assert_eq!(points(&app.drawing).len(), 1);
+
+        // Ctrl+Z: undo
+        harness.frame(
+            vec![
+                egui::Event::ModifiersChanged(egui::Modifiers::CTRL),
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        harness.frame(
+            vec![
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::ModifiersChanged(egui::Modifiers::NONE),
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        assert_eq!(points(&app.drawing).len(), 0);
+
+        // Ctrl+Shift+Z: redo
+        harness.frame(
+            vec![
+                egui::Event::ModifiersChanged(egui::Modifiers::CTRL | egui::Modifiers::SHIFT),
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::ShiftLeft,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        harness.frame(
+            vec![
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::ShiftLeft,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::Key {
+                    key: egui::Key::ControlLeft,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: Default::default(),
+                },
+                egui::Event::ModifiersChanged(egui::Modifiers::NONE),
+            ],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+        assert_eq!(points(&app.drawing).len(), 1);
     }
 }

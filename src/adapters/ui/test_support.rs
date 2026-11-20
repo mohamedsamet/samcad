@@ -52,13 +52,6 @@ impl Harness {
         // This prevents GPU display leaks in multple tests
         output.drop_without_applying_deltas();
     }
-
-    /// Resets this harness for a second test.
-    pub fn reset(&mut self) {
-        self.time = 0.0;
-        self.ctx = egui::Context::default();
-        egui_extras::install_image_loaders(&self.ctx);
-    }
 }
 
 impl Drop for Harness {

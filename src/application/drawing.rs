@@ -21,11 +21,6 @@ impl DrawingController {
             history: RefCell::new(CommandHistory::default()),
         }
     }
-
-    /// Clear the history.
-    pub fn clear_history(&self) {
-        self.history.borrow_mut().clear();
-    }
 }
 
 impl Default for DrawingController {
