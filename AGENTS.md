@@ -6,6 +6,9 @@
 ## Testing
 - BLOCKING: Do never run or add tests if it not implicitly requested in the prompt.
 
+## Check
+- BLOCKING: For each code change run cargo fmt and check and cargo build.
+
 ## Coverage Gate
 
 - When requested add test to handle coverage under 80%.

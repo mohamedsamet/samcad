@@ -7,8 +7,6 @@ use crate::presentation::component::IconId;
 pub struct Theme {
     /// Height of the always-visible main bar (title + window controls).
     pub main_bar_height: f32,
-    /// Height of the dynamic bar that appears just below it (File menu).
-    pub top_bar_height: f32,
     pub panel_width: f32,
     pub button_size: egui::Vec2,
     pub icon_size: egui::Vec2,
@@ -24,7 +22,6 @@ impl Default for Theme {
     fn default() -> Self {
         Self {
             main_bar_height: 32.0,
-            top_bar_height: 40.0,
             panel_width: 64.0,
             button_size: egui::vec2(48.0, 48.0),
             icon_size: egui::vec2(28.0, 28.0),
@@ -57,7 +54,6 @@ mod tests {
         let theme = Theme::default();
 
         assert_eq!(theme.main_bar_height, 32.0);
-        assert_eq!(theme.top_bar_height, 40.0);
         assert_eq!(theme.panel_width, 64.0);
         assert_eq!(theme.menu_font_size, 16.0);
     }

@@ -1,14 +1,13 @@
 use eframe::egui;
 
 use crate::core::ports::WindowUseCase;
-use crate::presentation::component::WindowButton;
+use crate::presentation::component::{MenuAction, WindowButton};
 use crate::presentation::main_bar;
 
 use super::theme::Theme;
 
-/// Renders the permanent main bar: version title in the middle, window
-/// controls on the right. Button clicks call the driving port; they never
-/// issue viewport commands directly.
+/// Renders the permanent main bar: menus on the left, version title in the
+/// middle, window controls on the right.
 pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
     let model = main_bar::view_model();
 
@@ -17,6 +16,10 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
         .show(ui, |ui| {
             // Three equal columns keep the middle one centered in the window.
             ui.columns(3, |columns| {
+                columns[0].with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                    paint_menus(ui, model.menus, theme);
+                });
+
                 columns[1].vertical_centered(|ui| {
                     ui.label(model.title);
                 });
@@ -31,6 +34,30 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
                 });
             });
         });
+}
+
+fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) {
+    egui::MenuBar::new().ui(ui, |ui| {
+        for menu in menus {
+            let label = egui::RichText::new(menu.label).size(theme.menu_font_size);
+            let button = egui::Button::new(label).min_size(theme.menu_button_size);
+            egui::menu::MenuButton::from_button(button).ui(ui, |ui| {
+                for item in menu.items {
+                    let item_label = egui::RichText::new(item.label).size(theme.menu_font_size);
+                    let item_button = egui::Button::new(item_label).min_size(theme.menu_item_size);
+                    if ui.add(item_button).clicked() {
+                        // No document model or file I/O yet: selecting any
+                        // File action only closes the menu for now.
+                        match item.action {
+                            MenuAction::NewProject | MenuAction::Save | MenuAction::Export => {
+                                ui.close()
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    });
 }
 
 fn paint_window_button(ui: &mut egui::Ui, button: WindowButton, window: &dyn WindowUseCase) {

@@ -3,9 +3,8 @@ use eframe::egui;
 use crate::adapters::window::WindowActionBridge;
 use crate::core::ports::{DrawingUseCase, ToolUseCase, WindowUseCase};
 use crate::presentation::canvas::Camera;
-use crate::presentation::top_bar::TopBarState;
 
-use super::{canvas, main_bar, theme::Theme, tool_panel, top_bar};
+use super::{canvas, main_bar, theme::Theme, tool_panel};
 
 /// eframe application: translates user input into use-case calls and renders
 /// the result. It contains no business logic.
@@ -22,7 +21,6 @@ where
     drawing: D,
     window_bridge: WindowActionBridge,
     theme: Theme,
-    top_bar: TopBarState,
     camera: Camera,
 }
 
@@ -48,7 +46,6 @@ where
             drawing,
             window_bridge,
             theme: Theme::default(),
-            top_bar: TopBarState::default(),
             camera: Camera::default(),
         }
     }
@@ -98,10 +95,9 @@ where
         }
 
         // The main bar reserves space at the top and the tool palette reserves
-        // space on the left; the dynamic bar is an overlay drawn on top of them.
+        // space on the left.
         main_bar::show(ui, &self.window, &self.theme);
         tool_panel::show(ui, &self.tools, &self.theme);
-        top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
         // Drawing canvas, filled last so the panels keep their reserved space.
         canvas::show(ui, &self.tools, &self.drawing, &mut self.camera);
@@ -112,7 +108,7 @@ where
 mod tests {
     use super::*;
 
-    use crate::adapters::ui::test_support::{Harness, RecordingWindow, SharedTools, moved, points};
+    use crate::adapters::ui::test_support::{Harness, RecordingWindow, SharedTools, points};
     use crate::adapters::window::WindowActionAdapter;
     use crate::application::drawing::DrawingController;
     use crate::core::model::Tool;
@@ -151,7 +147,7 @@ mod tests {
         let mut app = test_app(ctx.clone(), tools);
         let mut harness = Harness::with_context(ctx);
 
-        harness.frame(vec![moved(egui::pos2(100.0, 40.0))], |ui| {
+        harness.frame(vec![], |ui| {
             app.ui(ui, &mut eframe::Frame::_new_kittest());
         });
 
