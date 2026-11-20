@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-> Status: **Draft** · Last updated: 2026-11-19
+> Status: **Draft** · Last updated: 2026-11-21
 
 ## ADR-001 — Use Rust as the implementation language
 
@@ -43,6 +43,13 @@
 - **Context:** Need curves, filled shapes and a path abstraction without pulling in a C++ CAD kernel.
 - **Decision:** Use `lyon` for path building/curve math/tessellation when needed; no OpenCASCADE or equivalent.
 - **Consequences:** Lightweight and pure Rust; advanced booleans/offsets may require `geo` or custom code later.
+
+## ADR-008 — Generic modal dialog system for confirmations
+
+- **Context:** "New Project" needs to ask whether to save current work before discarding it. Future flows (discard changes, overwrite file, etc.) will need the same pattern.
+- **Decision:** A reusable `DialogModel<A>` / `DialogButton<A>` / `DialogState` trio in `presentation/dialog.rs`, rendered by a generic `dialog::show()` adapter in `adapters/ui/dialog.rs`. Buttons are right-aligned; Escape and backdrop click close without acting.
+- **Alternatives:** Hard-code a one-off modal; use egui's `Window` instead of `Modal`.
+- **Consequences:** New confirmations only need a view model function and a `DialogState` field. Slight extra abstraction for the first use, but pays off immediately for the next one.
 
 ## Template for future ADRs
 

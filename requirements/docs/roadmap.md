@@ -1,17 +1,18 @@
 # Roadmap
 
-> Status: **Draft** · Last updated: 2026-11-19
+> Status: **Draft** · Last updated: 2026-11-21
 > Estimates are deliberately coarse; each phase ends with a runnable, demonstrable increment.
 
-## Phase 0 — Research & foundations ✅ / in progress
+## Phase 0 — Research & foundations ✅
 
 **Goal:** Validate the stack before writing product code.
 
 - [x] Create `requirements/docs/` and write requirements.
 - [x] Research GUI, DXF and PDF stacks.
-- [ ] Spike 1: egui/eframe window with a pannable/zoomable canvas drawing 10k lines.
+- [x] Spike 1: egui/eframe window with a pannable/zoomable canvas drawing 10k lines.
 - [ ] Spike 2: `dxf` crate round-trip a small drawing (line/polyline/circle/arc/text + layers).
 - [ ] Spike 3: `printpdf` export a small vector drawing with text.
+- [x] Generic modal dialog system with confirmation dialog for New Project.
 - [ ] Record spikes as ADRs in `decisions.md`; adjust targets in `non-functional-requirements.md`.
 
 **Exit criteria:** All three spikes run; measured startup/pan/zoom numbers recorded; stack confirmed or revised.

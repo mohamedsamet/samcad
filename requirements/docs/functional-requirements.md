@@ -1,6 +1,6 @@
 # Functional Requirements
 
-> Status: **Draft** · Last updated: 2026-11-20
+> Status: **Draft** · Last updated: 2026-11-21
 > Priority: **P0** = MVP · **P1** = first full release · **P2** = later
 
 ## 1. Document & file management
@@ -15,7 +15,7 @@
 | FR-06 | P1 | Export PDF | Vector output at selectable paper size (A4/A3/Letter) and scale, with optional frame/title block |
 | FR-07 | P2 | Export SVG | Vector SVG suitable for web/print workflows |
 | FR-08 | P2 | Headless CLI conversion | `samcad convert input.dxf output.pdf` works without a display |
-| FR-09 | P0 | "New Project" entry in the File menu | Selecting it closes the menu; creating the actual empty drawing is deferred to FR-01 |
+| FR-09 | P0 | "New Project" entry in the File menu | Opens a confirmation dialog with **Save** and **Don't Save** buttons; both discard the current drawing for now (saving deferred to FR-02) |
 | FR-09a | P0 | "Save" and "Export" entries in the File menu | Both appear under File below New Project; selecting either closes the menu. Actual saving/export is deferred to FR-02 / FR-05–FR-06 |
 | FR-09b | P0 | Point tool in the left palette | Fifth icon button (Point) selects the point tool; highlight/tooltip behave like the other tools |
 | FR-09c | P0 | Escape clears the active tool | Pressing Esc deselects the current tool; no palette button is highlighted and clicking the canvas does nothing until a tool is picked again |
@@ -61,6 +61,8 @@
 
 Implemented so far: wheel zoom anchored at the cursor (Ctrl+wheel and trackpad pinch also work), clamped to 0.01–10 000 px per world unit; middle-drag pan; and primary-drag pan while no tool is active. Still pending for FR-30: space-drag pan and zoom-to-fit. FR-31 (adaptive grid) is not implemented yet.
 
+File menu is now in the permanent main bar (FR-55). "New Project" opens a generic confirmation dialog (FR-09) with **Save** / **Don't Save** — both discard for now. The dialog system is reusable for future verifications (discard changes, overwrite confirm, etc.). Escape closes dialogs; backdrop click closes dialogs.
+
 ## 5. Layers & styles
 
 | ID | Priority | Requirement | Acceptance criteria |
@@ -80,9 +82,8 @@ Implemented so far: wheel zoom anchored at the cursor (Ctrl+wheel and trackpad p
 | FR-52 | P1 | Dark/light theme | Follows egui theme with CAD-appropriate colors |
 | FR-53 | P1 | Localization-ready strings | UI text centralized; no hardcoded user-facing strings in core |
 | FR-54 | P2 | Web (WASM) build | Core editor usable in browser with file open/save via browser APIs |
-| FR-55 | P0 | Permanent main bar | Always displayed at the top; contains the version title in the center and Minimize / Close controls on the right |
-| FR-55a | P0 | Dynamic bar below the main bar | Hidden by default; floats immediately below the permanent main bar, over the tool palette, and contains only the File menu. Appears when the cursor reaches the bar's height; stays visible while the cursor is over either bar; hides 10 s after the cursor leaves both, or immediately on a click outside the bar |
-| FR-56 | P0 | File menu in the top bar | Clicking **File** opens a menu containing **New Project**, **Save** and **Export**; clicking any entry closes the menu |
+| FR-55 | P0 | Permanent main bar | Always displayed at the top; contains the File menu on the left, version title in the center, and Minimize / Close controls on the right |
+| FR-56 | P0 | File menu in the main bar | Clicking **File** opens a menu containing **New Project**, **Save** and **Export**; clicking any entry closes the menu. **New Project** opens a confirmation dialog (see FR-09) |
 | FR-57 | P1 | Configuration file (`samcad.env`) | Simple `KEY=VALUE` file in the working directory to parameterize the app: theme colours (snap indicator, etc.), preferences; comments with `#`; missing file falls back to defaults |
 
 ## Out of scope (explicit)
