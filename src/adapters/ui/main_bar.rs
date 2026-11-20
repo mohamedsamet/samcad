@@ -37,7 +37,9 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
 }
 
 fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) {
-    egui::MenuBar::new().ui(ui, |ui| {
+    // Use a horizontal layout with centered alignment to keep the button
+    // vertically centered within the main bar.
+    ui.horizontal(|ui| {
         for menu in menus {
             let label = egui::RichText::new(menu.label).size(theme.menu_font_size);
             let button = egui::Button::new(label).min_size(theme.menu_button_size);
