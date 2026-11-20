@@ -9,6 +9,10 @@
 ## Check
 - BLOCKING: For each code change run cargo fmt and check and cargo build.
 
+
+## Git
+- BLOCKING: Never commit or push until it is implicitly requested.
+
 ## Coverage Gate
 
 - When requested add test to handle coverage under 80%.
