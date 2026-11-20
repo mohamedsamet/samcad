@@ -189,7 +189,7 @@ mod tests {
             ],
         };
         let camera = Camera::default();
-        
+
         // Inside radius of point (0,0)
         let target = find_snap_target(&drawing, &camera, 5.0, 5.0, 10.0);
         assert_eq!(target, Some(SnapTarget::Point(Point { x: 0.0, y: 0.0 })));
@@ -201,7 +201,7 @@ mod tests {
             points: vec![Point { x: 100.0, y: 100.0 }],
         };
         let camera = Camera::default();
-        
+
         // Outside radius
         let target = find_snap_target(&drawing, &camera, 0.0, 0.0, 10.0);
         assert_eq!(target, None);
