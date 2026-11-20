@@ -1,6 +1,6 @@
 # Functional Requirements
 
-> Status: **Draft** · Last updated: 2026-11-21
+> Status: **Draft** · Last updated: 2026-11-20
 > Priority: **P0** = MVP · **P1** = first full release · **P2** = later
 
 ## 1. Document & file management

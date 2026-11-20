@@ -1,6 +1,6 @@
 # Roadmap
 
-> Status: **Draft** · Last updated: 2026-11-21
+> Status: **Draft** · Last updated: 2026-11-20
 > Estimates are deliberately coarse; each phase ends with a runnable, demonstrable increment.
 
 ## Phase 0 — Research & foundations ✅

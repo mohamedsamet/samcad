@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-> Status: **Draft** · Last updated: 2026-11-21
+> Status: **Draft** · Last updated: 2026-11-20
 
 ## ADR-001 — Use Rust as the implementation language
 
