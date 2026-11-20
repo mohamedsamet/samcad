@@ -3,12 +3,14 @@
 ## Chat Rules
  - BLOCKING : Use only english to respond 
 
+## Images
+ - All images that represent bugs or issue can be find under requirements/images
+
 ## Testing
 - BLOCKING: Do never run or add tests if it not implicitly requested in the prompt.
 
 ## Check
 - BLOCKING: For each code change run cargo fmt and check and cargo build.
-
 
 ## Git
 - BLOCKING: Never commit or push until it is implicitly requested.
