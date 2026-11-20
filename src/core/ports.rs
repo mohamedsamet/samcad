@@ -29,6 +29,9 @@ pub trait DrawingUseCase {
     /// This keeps painting allocation-free even as the document grows.
     fn for_each_point(&self, visit: &mut dyn FnMut(&Point));
 
+    /// Removes every entity and clears the undo/redo history.
+    fn clear(&self);
+
     /// Undo the last operation.
     fn undo(&self) -> bool;
 

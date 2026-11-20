@@ -3,8 +3,11 @@ use eframe::egui;
 use crate::adapters::window::WindowActionBridge;
 use crate::core::ports::{DrawingUseCase, ToolUseCase, WindowUseCase};
 use crate::presentation::canvas::Camera;
+use crate::presentation::component::MenuAction;
+use crate::presentation::dialog::DialogState;
+use crate::presentation::new_project;
 
-use super::{canvas, main_bar, theme::Theme, tool_panel};
+use super::{canvas, dialog, main_bar, theme::Theme, tool_panel};
 
 /// eframe application: translates user input into use-case calls and renders
 /// the result. It contains no business logic.
@@ -21,6 +24,7 @@ where
     drawing: D,
     window_bridge: WindowActionBridge,
     theme: Theme,
+    new_project_dialog: DialogState,
     camera: Camera,
 }
 
@@ -46,6 +50,7 @@ where
             drawing,
             window_bridge,
             theme: Theme::default(),
+            new_project_dialog: DialogState::default(),
             camera: Camera::default(),
         }
     }
@@ -72,35 +77,62 @@ where
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.window_bridge.apply_to(ui.ctx());
 
-        // Esc clears the active tool, if any.
-        if ui.ctx().input(|input| input.key_pressed(egui::Key::Escape)) {
+        // A modal dialog owns the keyboard while it is open.
+        let dialog_open = self.new_project_dialog.is_open();
+
+        // Esc clears the active tool, if any (unless a dialog is open).
+        if !dialog_open && ui.ctx().input(|input| input.key_pressed(egui::Key::Escape)) {
             self.tools.deselect();
         }
 
         // Ctrl+Shift+Z or Ctrl+Y: Redo (check first — more specific)
-        if ui.ctx().input(|input| {
-            (input.key_pressed(egui::Key::Y) && input.modifiers.ctrl)
-                || (input.key_pressed(egui::Key::Z)
-                    && input.modifiers.ctrl
-                    && input.modifiers.shift)
-        }) {
+        if !dialog_open
+            && ui.ctx().input(|input| {
+                (input.key_pressed(egui::Key::Y) && input.modifiers.ctrl)
+                    || (input.key_pressed(egui::Key::Z)
+                        && input.modifiers.ctrl
+                        && input.modifiers.shift)
+            })
+        {
             self.drawing.redo();
         }
         // Ctrl+Z: Undo
-        else if ui
-            .ctx()
-            .input(|input| input.key_pressed(egui::Key::Z) && input.modifiers.ctrl)
+        else if !dialog_open
+            && ui
+                .ctx()
+                .input(|input| input.key_pressed(egui::Key::Z) && input.modifiers.ctrl)
         {
             self.drawing.undo();
         }
 
         // The main bar reserves space at the top and the tool palette reserves
         // space on the left.
-        main_bar::show(ui, &self.window, &self.theme);
+        if let Some(action) = main_bar::show(ui, &self.window, &self.theme) {
+            match action {
+                MenuAction::NewProject => self.new_project_dialog.open(),
+                // Saving and exporting are not implemented yet.
+                MenuAction::Save | MenuAction::Export => {}
+            }
+        }
         tool_panel::show(ui, &self.tools, &self.theme);
 
         // Drawing canvas, filled last so the panels keep their reserved space.
         canvas::show(ui, &self.tools, &self.drawing, &mut self.camera);
+
+        // Modal dialogs paint over everything else. Both choices discard the
+        // work for now; saving will be handled here once it exists.
+        let new_project_model = new_project::dialog_model();
+        if dialog::show(
+            ui.ctx(),
+            egui::Id::unique("new_project_dialog"),
+            &mut self.new_project_dialog,
+            &new_project_model,
+            &self.theme,
+        )
+        .is_some()
+        {
+            self.drawing.clear();
+        }
     }
 }
 

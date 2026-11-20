@@ -3,6 +3,7 @@
 mod app;
 mod canvas;
 mod cursor;
+mod dialog;
 mod main_bar;
 mod theme;
 mod tool_panel;

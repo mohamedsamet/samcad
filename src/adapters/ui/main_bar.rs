@@ -7,8 +7,9 @@ use crate::presentation::main_bar;
 use super::theme::Theme;
 
 /// Renders the permanent main bar: menus on the left, version title in the
-/// middle, window controls on the right.
-pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
+/// middle, window controls on the right. Returns the menu action selected this
+/// frame, if any, so the caller can react to it (the menu itself only closes).
+pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) -> Option<MenuAction> {
     let model = main_bar::view_model();
 
     egui::Panel::top("main_bar")
@@ -16,9 +17,9 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
         .show(ui, |ui| {
             // Three equal columns keep the middle one centered in the window.
             ui.columns(3, |columns| {
-                columns[0].vertical_centered(|ui| {
-                    paint_menus(ui, model.menus, theme);
-                });
+                let chosen = columns[0]
+                    .vertical_centered(|ui| paint_menus(ui, model.menus, theme))
+                    .inner;
 
                 columns[1].vertical_centered(|ui| {
                     ui.label(model.title);
@@ -32,11 +33,16 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
                         paint_window_button(ui, button, window);
                     }
                 });
-            });
-        });
+
+                chosen
+            })
+        })
+        .inner
 }
 
-fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) {
+fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) -> Option<MenuAction> {
+    let mut chosen = None;
+
     ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
         // Reduce vertical button padding so the menu button fits exactly
         // within the main bar height without overflowing.
@@ -51,13 +57,10 @@ fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) {
                     let item_label = egui::RichText::new(item.label).size(theme.menu_font_size);
                     let item_button = egui::Button::new(item_label).min_size(theme.menu_item_size);
                     if ui.add(item_button).clicked() {
-                        // No document model or file I/O yet: selecting any
-                        // File action only closes the menu for now.
-                        match item.action {
-                            MenuAction::NewProject | MenuAction::Save | MenuAction::Export => {
-                                ui.close()
-                            }
-                        }
+                        // The caller decides what the action does; the menu
+                        // only records the selection and closes itself.
+                        chosen = Some(item.action);
+                        ui.close();
                     }
                 }
             });
@@ -65,6 +68,8 @@ fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) {
 
         ui.style_mut().spacing.button_padding = original_padding;
     });
+
+    chosen
 }
 
 fn paint_window_button(ui: &mut egui::Ui, button: WindowButton, window: &dyn WindowUseCase) {
@@ -92,7 +97,9 @@ mod tests {
         let mut harness = Harness::new();
         let window = RecordingWindow::default();
 
-        harness.frame(vec![], |ui| show(ui, &window, &Theme::default()));
+        harness.frame(vec![], |ui| {
+            show(ui, &window, &Theme::default());
+        });
 
         assert!(window.calls.borrow().is_empty());
     }

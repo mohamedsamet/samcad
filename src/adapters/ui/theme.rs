@@ -16,6 +16,10 @@ pub struct Theme {
     pub menu_item_size: egui::Vec2,
     /// Font size used for the File button and its menu entries.
     pub menu_font_size: f32,
+    /// Maximum width of modal dialogs.
+    pub modal_width: f32,
+    /// Vertical space between a modal's message and its buttons.
+    pub modal_spacing: f32,
 }
 
 impl Default for Theme {
@@ -28,6 +32,8 @@ impl Default for Theme {
             menu_button_size: egui::vec2(80.0, 24.0),
             menu_item_size: egui::vec2(160.0, 32.0),
             menu_font_size: 16.0,
+            modal_width: 420.0,
+            modal_spacing: 16.0,
         }
     }
 }

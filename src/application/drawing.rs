@@ -43,6 +43,11 @@ impl DrawingUseCase for DrawingController {
         }
     }
 
+    fn clear(&self) {
+        *self.document.borrow_mut() = Document::default();
+        self.history.borrow_mut().clear();
+    }
+
     fn undo(&self) -> bool {
         let mut history = self.history.borrow_mut();
         history.undo(&mut self.document.borrow_mut())

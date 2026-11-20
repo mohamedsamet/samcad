@@ -174,6 +174,7 @@ mod tests {
                 visit(p);
             }
         }
+        fn clear(&self) {}
         fn undo(&self) -> bool {
             false
         }
