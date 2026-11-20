@@ -8,11 +8,11 @@ The report must be lcov produced by:
 
     cargo llvm-cov --lcov --output-path target/coverage/lcov.info
 
-Scope: src/core, src/application, src/presentation, plus the pure adapter
-helpers src/adapters/window.rs, src/adapters/ui/theme.rs and
-src/adapters/ui/cursor.rs. The eframe/egui shell (src/main.rs, app.rs and the
-painting modules) needs a live window or frame, so it is excluded. Inline
-#[cfg(test)] modules are excluded from the measured lines.
+Scope: every production module under src/core, src/application,
+src/presentation and src/adapters. The egui shell is exercised through headless
+frames in unit tests, so it is measured too; only src/main.rs (the composition
+root that launches a native window) is out of scope. Inline #[cfg(test)]
+modules are excluded from the measured lines.
 """
 
 from __future__ import annotations

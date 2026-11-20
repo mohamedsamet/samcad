@@ -79,3 +79,73 @@ impl eframe::App for SamcadApp {
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::adapters::ui::test_support::{Harness, RecordingWindow, SharedTools, moved};
+    use crate::adapters::window::WindowActionAdapter;
+    use crate::application::drawing::DrawingController;
+    use crate::core::model::Tool;
+    use eframe::App;
+
+    fn test_app(ctx: egui::Context, tools: SharedTools) -> SamcadApp {
+        let cc = eframe::CreationContext::_new_kittest(ctx);
+        let (_actions, bridge) = WindowActionAdapter::channel();
+        SamcadApp::new(
+            &cc,
+            Box::new(RecordingWindow::default()),
+            Box::new(tools),
+            Box::new(DrawingController::new()),
+            bridge,
+        )
+    }
+
+    #[test]
+    fn native_options_request_a_frameless_fullscreen_window() {
+        let options = native_options();
+
+        assert_eq!(options.viewport.app_id.as_deref(), Some("com.samcad.app"));
+        assert_eq!(options.viewport.title.as_deref(), Some("samcad"));
+        assert_eq!(options.viewport.fullscreen, Some(true));
+        assert_eq!(options.viewport.decorations, Some(false));
+    }
+
+    #[test]
+    fn new_renders_the_whole_ui_headlessly_with_default_state() {
+        let ctx = egui::Context::default();
+        let tools = SharedTools::default();
+        let mut app = test_app(ctx.clone(), tools);
+        let mut harness = Harness::with_context(ctx);
+
+        harness.frame(vec![moved(egui::pos2(100.0, 40.0))], |ui| {
+            app.ui(ui, &mut eframe::Frame::_new_kittest());
+        });
+
+        assert_eq!(app.camera, Camera::default());
+        assert_eq!(app.tools.selected(), None);
+    }
+
+    #[test]
+    fn escape_clears_the_active_tool() {
+        let ctx = egui::Context::default();
+        let tools = SharedTools::default();
+        tools.select(Tool::Line);
+        let mut app = test_app(ctx.clone(), tools.clone());
+        let mut harness = Harness::with_context(ctx);
+
+        harness.frame(
+            vec![egui::Event::Key {
+                key: egui::Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: Default::default(),
+            }],
+            |ui| app.ui(ui, &mut eframe::Frame::_new_kittest()),
+        );
+
+        assert_eq!(*tools.selected.borrow(), None);
+    }
+}

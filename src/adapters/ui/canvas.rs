@@ -114,3 +114,150 @@ fn paint_points(
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::adapters::ui::test_support::{Harness, button, moved, points};
+    use crate::application::drawing::DrawingController;
+    use crate::application::tool::ToolController;
+    use crate::core::document::Point;
+    use crate::core::model::Tool;
+
+    const CURSOR: egui::Pos2 = egui::pos2(600.0, 400.0);
+    // egui's default central panel frame has an 8-point inner margin, so the
+    // canvas-local origin is offset from the window origin in these tests.
+    const CANVAS_ORIGIN: egui::Vec2 = egui::vec2(8.0, 8.0);
+
+    #[test]
+    fn point_click_creates_a_world_point_and_paints_visible_ones() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+        tools.select(Tool::Point);
+        let drawing = DrawingController::new();
+        // Outside the viewport: exercised by culling during painting.
+        drawing.add_point(Point {
+            x: 9_000.0,
+            y: 9_000.0,
+        });
+        let mut camera = Camera::default();
+
+        harness.click(egui::pos2(300.0, 200.0), |ui| {
+            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+        });
+
+        assert_eq!(
+            points(&drawing),
+            [
+                Point {
+                    x: 9_000.0,
+                    y: 9_000.0
+                },
+                Point {
+                    x: 300.0 - CANVAS_ORIGIN.x as f64,
+                    y: -(200.0 - CANVAS_ORIGIN.y as f64)
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn click_without_a_tool_does_not_change_the_drawing() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+        let drawing = DrawingController::new();
+        let mut camera = Camera::default();
+
+        harness.click(CURSOR, |ui| {
+            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+        });
+
+        assert!(points(&drawing).is_empty());
+    }
+
+    #[test]
+    fn pinch_zoom_stays_anchored_under_the_cursor() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+        let drawing = DrawingController::new();
+        let mut camera = Camera::default();
+        let anchor = CURSOR - CANVAS_ORIGIN;
+        let before = camera.screen_to_world(anchor.x, anchor.y);
+        let mut render = |ui: &mut egui::Ui| {
+            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+        };
+
+        harness.frame(vec![moved(CURSOR)], &mut render);
+        harness.frame(vec![moved(CURSOR), egui::Event::Zoom(2.0)], render);
+
+        let after = camera.screen_to_world(anchor.x, anchor.y);
+        assert!((after.x - before.x).abs() < 1e-6);
+        assert!((after.y - before.y).abs() < 1e-6);
+        assert_eq!(camera.zoom(), 2.0);
+    }
+
+    #[test]
+    fn middle_drag_pans_even_with_a_tool_selected() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+        tools.select(Tool::Point);
+        let drawing = DrawingController::new();
+        let mut camera = Camera::default();
+        let end = egui::pos2(CURSOR.x + 50.0, CURSOR.y + 30.0);
+        let mut render = |ui: &mut egui::Ui| {
+            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+        };
+
+        harness.frame(vec![moved(CURSOR)], &mut render);
+        harness.frame(
+            vec![
+                moved(CURSOR),
+                button(CURSOR, egui::PointerButton::Middle, true),
+            ],
+            &mut render,
+        );
+        harness.frame(vec![moved(end)], &mut render);
+        harness.frame(
+            vec![button(end, egui::PointerButton::Middle, false)],
+            render,
+        );
+
+        assert_eq!(
+            camera.screen_to_world(0.0, 0.0),
+            Point { x: -50.0, y: 30.0 }
+        );
+    }
+
+    #[test]
+    fn primary_drag_pans_only_when_no_tool_is_active() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+        let drawing = DrawingController::new();
+        let mut camera = Camera::default();
+        let end = egui::pos2(CURSOR.x - 20.0, CURSOR.y - 10.0);
+        let mut render = |ui: &mut egui::Ui| {
+            show(ui, &tools, &drawing, &mut camera, &Theme::default());
+        };
+
+        harness.frame(vec![moved(CURSOR)], &mut render);
+        harness.frame(
+            vec![
+                moved(CURSOR),
+                button(CURSOR, egui::PointerButton::Primary, true),
+            ],
+            &mut render,
+        );
+        harness.frame(vec![moved(end)], &mut render);
+        harness.frame(
+            vec![button(end, egui::PointerButton::Primary, false)],
+            render,
+        );
+
+        assert_eq!(
+            camera.screen_to_world(0.0, 0.0),
+            Point { x: 20.0, y: -10.0 }
+        );
+        assert!(points(&drawing).is_empty());
+    }
+}

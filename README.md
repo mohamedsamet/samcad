@@ -64,7 +64,7 @@ cargo llvm-cov --lcov --output-path target/coverage/lcov.info
 python3 scripts/coverage_gate.py target/coverage/lcov.info 80
 ```
 
-The gate measures production lines (inline `#[cfg(test)]` modules excluded) in `core`, `application`, `presentation` and the pure adapter helpers; the eframe/egui shell is excluded because it needs a live window. CI enforces the 80% threshold.
+The gate measures production lines (inline `#[cfg(test)]` modules excluded) in `core`, `application`, `presentation` and `adapters`. The egui shell is exercised through headless frames in unit tests; only `src/main.rs`, which launches the native window, is out of scope. CI enforces the 80% threshold.
 
 ## Architecture
 

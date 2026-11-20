@@ -50,3 +50,57 @@ fn paint(ui: &mut egui::Ui, component: Component, theme: &Theme, tools: &dyn Too
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::adapters::ui::test_support::Harness;
+    use crate::application::tool::ToolController;
+    use crate::core::model::Tool;
+    use crate::presentation::component::IconId;
+
+    fn icon(tool: Tool, enabled: bool) -> Component {
+        Component::IconButton {
+            tool,
+            icon: IconId::Circle,
+            tooltip: "Circle",
+            selected: false,
+            enabled,
+        }
+    }
+
+    #[test]
+    fn render_paints_the_separator_and_every_palette_button() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+
+        harness.frame(vec![], |ui| show(ui, &tools, &Theme::default()));
+
+        assert_eq!(tools.selected(), None);
+    }
+
+    #[test]
+    fn clicking_an_icon_selects_its_tool() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+
+        harness.click(egui::pos2(20.0, 20.0), |ui| {
+            paint(ui, icon(Tool::Circle, true), &Theme::default(), &tools);
+        });
+
+        assert_eq!(tools.selected(), Some(Tool::Circle));
+    }
+
+    #[test]
+    fn disabled_icons_ignore_clicks() {
+        let mut harness = Harness::new();
+        let tools = ToolController::new();
+
+        harness.click(egui::pos2(20.0, 20.0), |ui| {
+            paint(ui, icon(Tool::Circle, false), &Theme::default(), &tools);
+        });
+
+        assert_eq!(tools.selected(), None);
+    }
+}

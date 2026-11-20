@@ -70,3 +70,43 @@ fn paint_menus(ui: &mut egui::Ui, menus: &[top_bar::Menu], theme: &Theme) {
         }
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::adapters::ui::test_support::{Harness, click, moved};
+
+    const BAR_POINTER: egui::Pos2 = egui::pos2(100.0, 40.0);
+
+    fn show_bar(ctx: &egui::Context, state: &mut TopBarState) {
+        show(ctx, state, &Theme::default());
+    }
+
+    #[test]
+    fn pointer_reaching_the_bar_reveals_and_paints_the_file_menu() {
+        let mut harness = Harness::new();
+        let mut state = TopBarState::default();
+
+        harness.frame(vec![moved(BAR_POINTER)], |ui| {
+            show_bar(ui.ctx(), &mut state);
+        });
+
+        assert!(state.is_visible());
+    }
+
+    #[test]
+    fn click_below_the_bar_dismisses_it_immediately() {
+        let mut harness = Harness::new();
+        let mut state = TopBarState::default();
+
+        harness.frame(vec![moved(BAR_POINTER)], |ui| {
+            show_bar(ui.ctx(), &mut state);
+        });
+        harness.frame(click(egui::pos2(600.0, 400.0)), |ui| {
+            show_bar(ui.ctx(), &mut state);
+        });
+
+        assert!(!state.is_visible());
+    }
+}

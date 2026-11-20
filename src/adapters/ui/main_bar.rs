@@ -46,3 +46,35 @@ fn paint_window_button(ui: &mut egui::Ui, button: WindowButton, window: &dyn Win
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::adapters::ui::test_support::{Harness, RecordingWindow};
+
+    #[test]
+    fn render_keeps_the_bar_free_of_window_commands_until_clicked() {
+        let mut harness = Harness::new();
+        let window = RecordingWindow::default();
+
+        harness.frame(vec![], |ui| show(ui, &window, &Theme::default()));
+
+        assert!(window.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn both_window_buttons_call_their_window_port_method() {
+        let mut harness = Harness::new();
+        let window = RecordingWindow::default();
+        let button_pos = egui::pos2(10.0, 10.0);
+
+        for button in [WindowButton::Minimize, WindowButton::Close] {
+            harness.click(button_pos, |ui| {
+                paint_window_button(ui, button, &window);
+            });
+        }
+
+        assert_eq!(*window.calls.borrow(), ["minimize", "close"]);
+    }
+}
