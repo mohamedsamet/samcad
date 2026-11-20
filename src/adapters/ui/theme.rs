@@ -25,7 +25,7 @@ impl Default for Theme {
             panel_width: 64.0,
             button_size: egui::vec2(48.0, 48.0),
             icon_size: egui::vec2(28.0, 28.0),
-            menu_button_size: egui::vec2(80.0, 32.0),
+            menu_button_size: egui::vec2(80.0, 24.0),
             menu_item_size: egui::vec2(160.0, 32.0),
             menu_font_size: 16.0,
         }

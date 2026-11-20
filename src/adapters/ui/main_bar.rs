@@ -16,7 +16,7 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
         .show(ui, |ui| {
             // Three equal columns keep the middle one centered in the window.
             ui.columns(3, |columns| {
-                columns[0].with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                columns[0].vertical_centered(|ui| {
                     paint_menus(ui, model.menus, theme);
                 });
 
@@ -37,9 +37,12 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) {
 }
 
 fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) {
-    // Use a horizontal layout with centered alignment to keep the button
-    // vertically centered within the main bar.
-    ui.horizontal(|ui| {
+    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+        // Reduce vertical button padding so the menu button fits exactly
+        // within the main bar height without overflowing.
+        let original_padding = ui.style().spacing.button_padding;
+        ui.style_mut().spacing.button_padding = egui::vec2(8.0, 0.0);
+
         for menu in menus {
             let label = egui::RichText::new(menu.label).size(theme.menu_font_size);
             let button = egui::Button::new(label).min_size(theme.menu_button_size);
@@ -59,6 +62,8 @@ fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) {
                 }
             });
         }
+
+        ui.style_mut().spacing.button_padding = original_padding;
     });
 }
 
