@@ -4,11 +4,25 @@
 //! them to canvas-local screen points through its camera, so a point survives
 //! layout changes, zooming and panning.
 
+use crate::core::format::{DocumentData, PointData};
+
 /// A 2D point.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
+}
+
+impl From<Point> for PointData {
+    fn from(p: Point) -> Self {
+        PointData { x: p.x, y: p.y }
+    }
+}
+
+impl From<PointData> for Point {
+    fn from(p: PointData) -> Self {
+        Point { x: p.x, y: p.y }
+    }
 }
 
 /// The drawing currently being edited.
@@ -47,6 +61,21 @@ impl Document {
     /// The points in the drawing, in insertion order.
     pub fn points(&self) -> &[Point] {
         &self.points
+    }
+
+    /// Convert the document to serializable data.
+    pub fn to_data(&self) -> DocumentData {
+        DocumentData {
+            version: DocumentData::CURRENT_VERSION,
+            points: self.points.iter().map(|p| (*p).into()).collect(),
+        }
+    }
+
+    /// Create a document from serializable data.
+    pub fn from_data(data: DocumentData) -> Self {
+        Self {
+            points: data.points.into_iter().map(|p| p.into()).collect(),
+        }
     }
 }
 

@@ -16,7 +16,9 @@ pub enum IconId {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuAction {
     NewProject,
+    Open,
     Save,
+    SaveAs,
     Export,
 }
 

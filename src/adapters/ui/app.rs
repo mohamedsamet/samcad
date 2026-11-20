@@ -1,6 +1,10 @@
 use eframe::egui;
 
+use crate::adapters::keyring::OsKeyStore;
+use crate::adapters::ui::file_dialog;
 use crate::adapters::window::WindowActionBridge;
+use crate::application::load::{LoadController, LoadUseCase, StdFileSystem as LoadStdFileSystem};
+use crate::application::save::{SaveController, SaveUseCase, StdFileSystem};
 use crate::core::ports::{DrawingUseCase, ToolUseCase, WindowUseCase};
 use crate::presentation::canvas::Camera;
 use crate::presentation::component::MenuAction;
@@ -26,6 +30,7 @@ where
     theme: Theme,
     new_project_dialog: DialogState,
     camera: Camera,
+    current_path: Option<std::path::PathBuf>,
 }
 
 impl<T, C, D> SamcadApp<T, C, D>
@@ -52,6 +57,47 @@ where
             theme: Theme::default(),
             new_project_dialog: DialogState::default(),
             camera: Camera::default(),
+            current_path: None,
+        }
+    }
+
+    fn save_as(&mut self) {
+        if let Some(path) = file_dialog::save_dialog("untitled.samcad") {
+            self.save_to(path);
+        }
+    }
+
+    fn save(&mut self) {
+        if let Some(path) = self.current_path.clone() {
+            self.save_to(path);
+        } else {
+            self.save_as();
+        }
+    }
+
+    fn save_to(&mut self, path: std::path::PathBuf) {
+        let saver = SaveController::new(StdFileSystem, OsKeyStore::new());
+        if let Err(e) = saver.save_as(path.clone(), &self.drawing, &self.camera) {
+            eprintln!("Failed to save: {}", e);
+        } else {
+            self.current_path = Some(path);
+        }
+    }
+
+    fn open(&mut self) {
+        if let Some(path) = file_dialog::open_dialog() {
+            let loader = LoadController::new(LoadStdFileSystem, OsKeyStore::new());
+            match loader.load(path.clone()) {
+                Ok(result) => {
+                    self.drawing.clear();
+                    for point in result.document.points() {
+                        self.drawing.add_point(*point);
+                    }
+                    self.camera = result.camera;
+                    self.current_path = Some(path);
+                }
+                Err(e) => eprintln!("Failed to load: {}", e),
+            }
         }
     }
 }
@@ -105,13 +151,40 @@ where
             self.drawing.undo();
         }
 
+        // Ctrl+S: Save
+        if !dialog_open
+            && ui.ctx().input(|input| {
+                input.key_pressed(egui::Key::S) && input.modifiers.ctrl && !input.modifiers.shift
+            })
+        {
+            self.save();
+        }
+        // Ctrl+Shift+S: Save As
+        else if !dialog_open
+            && ui.ctx().input(|input| {
+                input.key_pressed(egui::Key::S) && input.modifiers.ctrl && input.modifiers.shift
+            })
+        {
+            self.save_as();
+        }
+        // Ctrl+O: Open
+        else if !dialog_open
+            && ui
+                .ctx()
+                .input(|input| input.key_pressed(egui::Key::O) && input.modifiers.ctrl)
+        {
+            self.open();
+        }
+
         // The main bar reserves space at the top and the tool palette reserves
         // space on the left.
         if let Some(action) = main_bar::show(ui, &self.window, &self.theme) {
             match action {
                 MenuAction::NewProject => self.new_project_dialog.open(),
-                // Saving and exporting are not implemented yet.
-                MenuAction::Save | MenuAction::Export => {}
+                MenuAction::Open => self.open(),
+                MenuAction::Save => self.save(),
+                MenuAction::SaveAs => self.save_as(),
+                MenuAction::Export => {}
             }
         }
         tool_panel::show(ui, &self.tools, &self.theme);

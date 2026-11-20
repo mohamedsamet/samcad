@@ -47,6 +47,10 @@ impl Camera {
         self.zoom
     }
 
+    pub fn origin(&self) -> Point {
+        self.origin
+    }
+
     /// Turns canvas-local screen coordinates into world coordinates.
     pub fn screen_to_world(&self, x: f32, y: f32) -> Point {
         let zoom = f64::from(self.zoom);
@@ -91,6 +95,26 @@ impl Camera {
         let zoom = f64::from(self.zoom);
         self.origin.x -= f64::from(dx) / zoom;
         self.origin.y += f64::from(dy) / zoom;
+    }
+
+    /// Convert camera to serializable data.
+    pub fn to_data(&self) -> crate::core::format::CameraData {
+        crate::core::format::CameraData {
+            origin_x: self.origin.x,
+            origin_y: self.origin.y,
+            zoom: self.zoom,
+        }
+    }
+
+    /// Create camera from serializable data.
+    pub fn from_data(data: crate::core::format::CameraData) -> Self {
+        Self {
+            origin: crate::core::document::Point {
+                x: data.origin_x,
+                y: data.origin_y,
+            },
+            zoom: data.zoom.clamp(MIN_ZOOM, MAX_ZOOM),
+        }
     }
 }
 

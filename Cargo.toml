@@ -8,3 +8,16 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 eframe = "0.37"
 egui_extras = { version = "0.37", features = ["svg"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+gethostname = "0.4"
+local-ip-address = "0.3"
+time = { version = "0.3", features = ["formatting"] }
+thiserror = "1.0"
+# Encryption
+aes-gcm = { version = "0.10", features = ["aes"] }
+rand = "0.8"
+zeroize = "1.8"
+base64 = "0.22"
+# OS keyring for secure key storage
+keyring = { version = "4", features = ["v1"] }

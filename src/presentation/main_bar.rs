@@ -34,8 +34,16 @@ pub const fn view_model() -> MainBarModel {
                     action: crate::presentation::component::MenuAction::NewProject,
                 },
                 MenuItem {
+                    label: "Open",
+                    action: crate::presentation::component::MenuAction::Open,
+                },
+                MenuItem {
                     label: "Save",
                     action: crate::presentation::component::MenuAction::Save,
+                },
+                MenuItem {
+                    label: "Save As...",
+                    action: crate::presentation::component::MenuAction::SaveAs,
                 },
                 MenuItem {
                     label: "Export",
