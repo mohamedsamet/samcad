@@ -174,10 +174,18 @@ mod tests {
                 visit(p);
             }
         }
-        fn undo(&self) -> bool { false }
-        fn redo(&self) -> bool { false }
-        fn can_undo(&self) -> bool { false }
-        fn can_redo(&self) -> bool { false }
+        fn undo(&self) -> bool {
+            false
+        }
+        fn redo(&self) -> bool {
+            false
+        }
+        fn can_undo(&self) -> bool {
+            false
+        }
+        fn can_redo(&self) -> bool {
+            false
+        }
     }
 
     #[test]

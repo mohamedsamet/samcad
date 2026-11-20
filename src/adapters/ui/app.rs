@@ -104,12 +104,7 @@ where
         top_bar::show(ui.ctx(), &mut self.top_bar, &self.theme);
 
         // Drawing canvas, filled last so the panels keep their reserved space.
-        canvas::show(
-            ui,
-            &self.tools,
-            &self.drawing,
-            &mut self.camera,
-        );
+        canvas::show(ui, &self.tools, &self.drawing, &mut self.camera);
     }
 }
 

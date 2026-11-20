@@ -31,7 +31,9 @@ pub fn parse_rgba(value: &str) -> Option<eframe::egui::Color32> {
 
     match parts.as_slice() {
         [r, g, b] => Some(eframe::egui::Color32::from_rgb(*r, *g, *b)),
-        [r, g, b, a] => Some(eframe::egui::Color32::from_rgba_unmultiplied(*r, *g, *b, *a)),
+        [r, g, b, a] => Some(eframe::egui::Color32::from_rgba_unmultiplied(
+            *r, *g, *b, *a,
+        )),
         _ => None,
     }
 }
@@ -42,9 +44,7 @@ mod tests {
 
     #[test]
     fn parse_env_file_handles_comments_and_whitespace() {
-        let map = parse_env_file(
-            "# comment\nKEY1=value1\n  KEY2 = value2  \nKEY3=\n",
-        );
+        let map = parse_env_file("# comment\nKEY1=value1\n  KEY2 = value2  \nKEY3=\n");
         assert_eq!(map.get("KEY1"), Some(&"value1".to_string()));
         assert_eq!(map.get("KEY2"), Some(&"value2".to_string()));
         assert_eq!(map.get("KEY3"), Some(&"".to_string()));
@@ -59,7 +59,9 @@ mod tests {
         );
         assert_eq!(
             parse_rgba("10,20,30,40"),
-            Some(eframe::egui::Color32::from_rgba_unmultiplied(10, 20, 30, 40))
+            Some(eframe::egui::Color32::from_rgba_unmultiplied(
+                10, 20, 30, 40
+            ))
         );
     }
 

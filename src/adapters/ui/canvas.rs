@@ -85,11 +85,7 @@ fn paint_snap_indicator(
     graphics: &crate::adapters::config::GraphicsConfig,
 ) {
     let screen = camera.world_to_screen(&target.world_point());
-    if screen.x >= 0.0
-        && screen.x <= rect.width()
-        && screen.y >= 0.0
-        && screen.y <= rect.height()
-    {
+    if screen.x >= 0.0 && screen.x <= rect.width() && screen.y >= 0.0 && screen.y <= rect.height() {
         // Use the configured snap colour, or fall back to egui's selection
         // colour (the same highlight used for selected buttons).
         let snap_color = graphics.snap_indicator_color;
@@ -323,10 +319,8 @@ mod tests {
 
         // Place an existing point directly under the cursor so the click
         // falls within the 10 px snap radius.
-        let cursor_world = camera.screen_to_world(
-            CURSOR.x - CANVAS_ORIGIN.x,
-            CURSOR.y - CANVAS_ORIGIN.y,
-        );
+        let cursor_world =
+            camera.screen_to_world(CURSOR.x - CANVAS_ORIGIN.x, CURSOR.y - CANVAS_ORIGIN.y);
         drawing.add_point(cursor_world);
 
         let mut render = |ui: &mut egui::Ui| {
@@ -362,10 +356,8 @@ mod tests {
         harness.frame(vec![moved(CURSOR)], &mut render);
         harness.click(CURSOR, render);
 
-        let cursor_world = camera.screen_to_world(
-            CURSOR.x - CANVAS_ORIGIN.x,
-            CURSOR.y - CANVAS_ORIGIN.y,
-        );
+        let cursor_world =
+            camera.screen_to_world(CURSOR.x - CANVAS_ORIGIN.x, CURSOR.y - CANVAS_ORIGIN.y);
         let pts = points(&drawing);
         assert_eq!(pts.len(), 2);
         assert_eq!(pts[1], cursor_world);

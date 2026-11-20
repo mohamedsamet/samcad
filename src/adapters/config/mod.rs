@@ -31,7 +31,7 @@ impl Default for GraphicsConfig {
     fn default() -> Self {
         Self {
             snap_indicator_color: egui::Color32::from_rgb(255, 165, 0), // orange
-            selection_color: egui::Color32::from_rgb(0, 120, 215),     // blue
+            selection_color: egui::Color32::from_rgb(0, 120, 215),      // blue
             point_color: egui::Color32::WHITE,
             point_radius: 2.0,
         }
