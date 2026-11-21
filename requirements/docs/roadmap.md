@@ -1,6 +1,6 @@
 # Roadmap
 
-> Status: **Draft** · Last updated: 2026-11-20
+> Status: **Draft** · Last updated: 2026-11-21
 > Estimates are deliberately coarse; each phase ends with a runnable, demonstrable increment.
 
 ## Phase 0 — Research & foundations ✅
@@ -26,8 +26,11 @@
 - Tools: line, polyline, rectangle, circle, arc, text, point.
 - Selection (click + window), move, delete, property editing (basic).
 - Grid, pan/zoom/zoom-to-fit, coordinate readout, snapping (grid/endpoint), ortho.
-- Native `.samcad` save/load, autosave recovery.
-- Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y and Ctrl+Shift+Z (redo), Escape (clear tool).
+- [x] Native `.samcad` save/load as plain versioned JSON (no encryption), with camera restore.
+- [x] Native file dialogs via the mockable `FileDialog` port (`zenity` on Linux).
+- [x] Save / Save As (unique filename) / Open with dirty tracking and confirmation dialogs for New Project and Open.
+- [ ] Autosave recovery.
+- [x] Keyboard shortcuts: Ctrl+Z (undo), Ctrl+Y and Ctrl+Shift+Z (redo), Escape (clear tool), Ctrl+S, Ctrl+Shift+S, Ctrl+O.
 
 **Exit criteria:** A user can draw, edit, undo and save/reopen a layout; `cargo test` green; no crashes on normal use.
 

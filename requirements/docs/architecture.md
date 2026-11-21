@@ -1,6 +1,6 @@
 # Proposed Architecture
 
-> Status: **Draft** · Last updated: 2026-11-19
+> Status: **Draft** · Last updated: 2026-11-21
 
 ## Crate layout
 
@@ -34,18 +34,25 @@ src/
 ├── core/
 │   ├── mod.rs               # domain entities + ports (no framework deps)
 │   ├── model.rs             # Tool enum
-│   ├── document.rs          # Point entity + Document container
-│   └── ports.rs             # driving ports (WindowUseCase, ToolUseCase, DrawingUseCase), driven port (WindowActions)
+│   ├── document.rs          # Point entity + Document container + to_data/from_data
+│   ├── format.rs            # SamcadFile / DocumentData / PointData / CameraData / MachineInfo (serde)
+│   ├── machine.rs           # collect_machine_info() (hostname + primary IPv4)
+│   └── ports.rs             # driving ports (WindowUseCase, ToolUseCase, DrawingUseCase incl. is_dirty/mark_saved), driven port (WindowActions)
 ├── application/
 │   ├── mod.rs
 │   ├── window.rs            # WindowController implements WindowUseCase
 │   ├── tool.rs              # ToolController implements ToolUseCase
-│   └── drawing.rs           # DrawingController implements DrawingUseCase
+│   ├── drawing.rs           # DrawingController implements DrawingUseCase + dirty tracking
+│   ├── save.rs              # SaveUseCase / SaveController / FileSystem port + StdFileSystem
+│   └── load.rs              # LoadUseCase / LoadController / FileSystem port + StdFileSystem
 ├── presentation/
 │   ├── mod.rs
-│   ├── canvas.rs            # camera (zoom/pan) + click action
+│   ├── canvas.rs            # camera (zoom/pan) + click action + Camera to_data/from_data
 │   ├── component.rs         # Component / IconId / MenuAction / MenuItem / WindowButton — no egui
-│   ├── main_bar.rs          # permanent bar view model (title + window controls)
+│   ├── dialog.rs            # generic DialogModel / DialogButton / DialogState
+│   ├── main_bar.rs          # permanent bar view model (File menu, document stem, app title, window controls)
+│   ├── new_project.rs       # New Project confirmation view model (Save / Don't Save)
+│   ├── open_project.rs      # Open File confirmation view model (Save / Don't Save / Cancel)
 │   ├── palette.rs           # builds the palette component tree from tool state
 │   └── top_bar.rs           # auto-hide state machine + dynamic bar view model (File only)
 └── adapters/
@@ -53,11 +60,13 @@ src/
     ├── window.rs            # driven adapter (channel) + bridge to egui ViewportCommand
     └── ui/
         ├── mod.rs
-        ├── app.rs           # driving adapter: SamcadApp + native_options()
+        ├── app.rs           # driving adapter: SamcadApp + native_options() + save scenarios
         ├── canvas.rs        # central drawing area + CAD cursor
+        ├── dialog.rs        # generic modal dialog renderer
+        ├── file_dialog.rs   # FileDialog port + ZenityFileDialog + MockFileDialog + unique_path
         ├── theme.rs         # sizes + IconId → SVG asset mapping (egui-specific)
         ├── cursor.rs        # embedded bitmap crosshair cursor for the canvas
-        ├── main_bar.rs      # permanent top Panel: title + window controls
+        ├── main_bar.rs      # permanent top Panel: File menu + document title + window controls
         ├── top_bar.rs       # floating Area just below the main bar: File menu
         ├── tool_panel.rs    # renders presentation components with egui
         └── icons/           # point.svg, line.svg, circle.svg, rectangle.svg, arc.svg,
@@ -68,7 +77,7 @@ Flow for a click on **Close**: `adapters/ui/main_bar.rs` → `WindowUseCase::clo
 
 Flow for the tool palette: the adapter reads `tools.selected()` and passes it as plain data to `presentation::palette::components(selected)`, which returns an iterator over `Component`s (a separator and five `IconButton`s — Point, Line, Circle, Rectangle, Arc — with tooltips and one selected) → `adapters/ui/tool_panel.rs` maps each component to an egui widget using `Theme` for sizes and `IconId → SVG` assets. A click calls `ToolUseCase::select()`; pressing Esc in `adapters/ui/app.rs` calls `ToolUseCase::deselect()`. Presentation therefore depends only on `Tool`, not on the application ports, and the component rules are unit-tested without egui. Canvas shape previews will be added as new `Component` variants produced by presentation and painted by the adapter.
 
-Two bars: `presentation::main_bar::view_model()` supplies the title and window controls to `adapters/ui/main_bar.rs`, which paints a permanent `Panel::top`. `presentation::top_bar` supplies the auto-hide state machine and the dynamic bar's menu-only view model; `adapters/ui/top_bar.rs` paints it as a foreground `egui::Area` anchored immediately below the main bar. Each frame the adapter feeds cursor Y and time into `TopBarState::update()` with the bottom edge of both bars as the reveal height: the dynamic bar appears when the cursor reaches that height, stays while the cursor is on either bar, and hides 10 s after the cursor leaves both; `TopBarState::notify_click()` dismisses it immediately on a click below that height. All of this is unit-tested without a window. The bar is a foreground `Area` that floats over the tool palette (no space is reserved for it there), and its File / New Project buttons use larger minimum sizes from `Theme`. Clicking **File → New Project / Save / Export** closes the menu via `ui.close()`; the actual operations are deferred (FR-01, FR-02, FR-05–FR-06). The tool palette has no "Tools" heading and uses larger 48×48 buttons (28×28 icons).
+Two bars: `presentation::main_bar::view_model()` supplies the title and window controls to `adapters/ui/main_bar.rs`, which paints a permanent `Panel::top`. `presentation::top_bar` supplies the auto-hide state machine and the dynamic bar's menu-only view model; `adapters/ui/top_bar.rs` paints it as a foreground `egui::Area` anchored immediately below the main bar. Each frame the adapter feeds cursor Y and time into `TopBarState::update()` with the bottom edge of both bars as the reveal height: the dynamic bar appears when the cursor reaches that height, stays while the cursor is on either bar, and hides 10 s after the cursor leaves both; `TopBarState::notify_click()` dismisses it immediately on a click below that height. All of this is unit-tested without a window. The bar is a foreground `Area` that floats over the tool palette (no space is reserved for it there), and its File / New Project buttons use larger minimum sizes from `Theme`. Clicking a **File** entry closes the menu via `ui.close()` and dispatches the action in `adapters/ui/app.rs`: **New Project**, **Open Project**, **Save** and **Save As...** are implemented (FR-01, FR-02, FR-03, FR-09–FR-09f); **Export** remains deferred to FR-05–FR-06. The main bar also renders the current document stem after the File menu, with a `*` while the drawing is dirty (FR-09d). The tool palette has no "Tools" heading and uses larger 48×48 buttons (28×28 icons).
 
 Flow for canvas input: `adapters/ui/canvas.rs` allocates the whole `CentralPanel` with `Sense::click_and_drag()`. On hover it reads `smooth_scroll_delta` for the wheel (and `zoom_delta` for Ctrl+wheel / trackpad pinch) and calls `presentation::canvas::Camera::zoom_around(cursor, factor)`, which keeps the world point under the cursor fixed and clamps the zoom to 0.01–10 000 px per world unit; middle-drag and primary-drag (only when no tool is active, so it never competes with click-to-draw) call `Camera::pan_by()`. A primary click converts the pointer position with `Camera::screen_to_world()` and asks `click_action(selected, world)`. With the Point tool it returns `AddPoint`; the adapter calls `DrawingUseCase::add_point()` on `DrawingController`, which appends to the `Document`. Painting calls `DrawingUseCase::for_each_point()` and `Camera::world_to_screen()`, rejecting points outside the viewport before drawing each white circle of `Theme::point_radius`. World coordinates are `f64` with Y up; canvas-local screen coordinates are `f32` with Y down, and the camera performs the flip. Geometry that predates a units/viewport transform is stored in canvas-independent world units, so it survives zooming and panning.
 
@@ -77,6 +86,26 @@ Canvas performance: egui is reactive, so an idle canvas schedules no frames; zoo
 Canvas cursor: when the pointer is inside the `CentralPanel`, `adapters/ui/canvas.rs` calls `set_cursor_image()` with the crosshair-with-pickbox bitmap from `adapters/ui/cursor.rs`. The bitmap is embedded as raw RGBA (`include_bytes!`, no runtime image-decoding dependency), cached in a `OnceLock` so egui-winit can dedupe it by `Arc` pointer, and falls back to `egui::CursorIcon::Crosshair` on integrations that cannot display bitmaps. Outside the canvas the custom image is not set, so widgets keep their normal cursor. The Point tool icon is a simple filled dot with a faint ring, distinct from the canvas crosshair.
 
 When the project later splits into workspace crates, these modules map onto `samcad-core`, `samcad-presentation`, `samcad-app`, and a new `samcad-ports` crate (or ports stay in `core`).
+
+## Save / load flow
+
+File operations go through driving ports in `application` and the injected `FileDialog` port (ADR-009):
+
+```text
+Ctrl+S / File → Save ──┬─ path known ──> SaveController::save_as(path) ──> serde_json ──> fs::write
+                       └─ no path ─────> FileDialog::save_dialog() ──> path ──> SaveController::save_as()
+
+Ctrl+Shift+S / Save As ──> FileDialog::save_new_dialog() ──> unique_path() ──> SaveController::save_as()
+Ctrl+O / Open ──> FileDialog::open_dialog() ──> [dirty? confirm] ──> LoadController::load()
+                     │                                                  │
+                     └──────────────────────────────────────────────────┴──> Document + Camera
+```
+
+- `SamcadApp` owns the current path; `DrawingUseCase::is_dirty()` / `mark_saved()` drive the title `*` and the New Project / Open confirmation dialogs. `SaveController` is created per operation.
+- `core/format.rs` holds the serde data structs; `Document` and `Camera` convert to/from them so `core` and `presentation` stay I/O-free.
+- `FileSystem` read/write ports keep the use cases testable with an in-memory fake; `StdFileSystem` uses `std::fs`.
+- `FileDialog` keeps native dialogs out of tests; `MockFileDialog` supplies paths or cancellations (ADR-009).
+- Files are plain unencrypted JSON (ADR-005); the complete save-scenario matrix S1–S8 is in `../docs/functional-requirements.md`.
 
 ## Core domain model (sketch)
 
@@ -166,7 +195,7 @@ Document ──> serde ──> versioned .samcad JSON
 
 ## File formats
 
-- `.samcad`: versioned JSON (serde) — human-readable, easy to debug, good enough for MVP. Revisit with `ron`/`postcard` if size matters.
+- `.samcad`: plain, unencrypted versioned JSON (serde) — human-readable, portable, easy to debug, good enough for MVP. Legacy encrypted files are rejected with a migration message. Revisit with `ron`/`postcard` if size matters.
 - `.dxf`: interchange format, ASCII subset, R12/R2000 first.
 - `.pdf`: vector output, PDF 1.7.
 

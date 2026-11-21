@@ -1,10 +1,10 @@
 # Plan: Native `.samcad` Save/Load Format
 
-> Status: **Planned** · Created: 2026-11-20
+> Status: **Implemented** · Created: 2026-11-20 · Updated: 2026-11-21
 
 ## Overview
 
-Implement the native `.samcad` file format (versioned JSON via serde) for saving and loading SamCAD drawings. This fulfills FR-02 (Save/load native `.samcad` project), FR-03 (Open/save via native file dialogs), and FR-09a (Save entry in File menu) — all P0 in the MVP.
+Implement the native `.samcad` file format (plain versioned JSON via serde) for saving and loading SamCAD drawings. This fulfills FR-02 (Save/load native `.samcad` project), FR-03 (Open/save via native file dialogs), FR-09a (Save/Save As entries) and FR-09d–FR-09f (dirty tracking, open confirmation, unique Save As names) — all P0 in the MVP.
 
 The format stores:
 - File format version (`samcad_version`)
@@ -12,6 +12,8 @@ The format stores:
 - Machine reference (hostname + IP address)
 - Document data (points, future entities, layers)
 - Camera view state (zoom + pan) so the view restores on load
+
+No encryption or keyring is used: files are intentionally human-readable and portable. The former encrypted/base64 files are recognized on load and rejected with a migration message (`LegacyEncryptedFormat`).
 
 ---
 
@@ -70,16 +72,17 @@ Following hexagonal boundaries (`core` ← `application` ← `adapters`):
 | `SamcadFile`, `DocumentData`, `CameraData`, `MachineInfo` | `src/core/format.rs` (new) | Domain structs + serde (de)serialize. No IO deps. |
 | `Document::from_data` / `Document::to_data` | `src/core/document.rs` | Convert between domain model and serializable data. |
 | `Camera::to_data` / `Camera::from_data` | `src/presentation/camera.rs` (new file or extend `canvas.rs`) | Serialize/deserialize camera state. |
-| `SaveUseCase` trait + `SaveController` | `src/application/save.rs` (new) | Driving port: `save(path)`, `save_as()`. Uses driven port `FileSystem`. |
-| `LoadUseCase` trait + `LoadController` | `src/application/load.rs` (new) | Driving port: `load(path)`. |
-| `FileSystem` trait + `StdFileSystem` | `src/adapters/io/` (new mod) | Driven port: `read(path)`, `write(path, bytes)`. Adapter implements with `std::fs`. |
-| File dialog | `src/adapters/ui/file_dialog.rs` (new) | Native open/save dialog via `rfd` or `eframe` native. |
-| Menu wiring | `src/adapters/ui/app.rs` + `presentation/main_bar.rs` | Connect Save/Save As/Open to use cases. |
+| `SaveUseCase` trait + `SaveController` | `src/application/save.rs` | Driving port: `save()`, `save_as(path)`, `current_path()`. Uses driven port `FileSystem`. |
+| `LoadUseCase` trait + `LoadController` | `src/application/load.rs` | Driving port: `load(path)` and a no-op `open()` (the UI adapter owns the dialog). |
+| `FileSystem` trait + `StdFileSystem` | `src/application/save.rs` / `load.rs` | Driven ports: `write(path, text)` / `read(path) -> text`; implemented with `std::fs`. |
+| `FileDialog` trait + `ZenityFileDialog` + `MockFileDialog` | `src/adapters/ui/file_dialog.rs` | Native open/save dialogs via `zenity`; mockable in tests (ADR-009). |
+| Menu wiring | `src/adapters/ui/app.rs` + `presentation/main_bar.rs` | Connect Save/Save As/Open/New Project to use cases and dirty tracking. |
 
-**Dependencies:**
-- Add `serde = { version = "1.0", features = ["derive"] }` and `serde_json = "1.0"` to `Cargo.toml`.
-- Add `gethostname = "0.4"` for machine name.
-- Add `local-ip-address = "0.3"` (or similar) for primary IP detection.
+**Dependencies (as implemented):**
+- `serde` (derive) and `serde_json` in `Cargo.toml` for the JSON format.
+- `time` for the ISO-8601 UTC timestamp.
+- `gethostname` and `local-ip-address` for machine info.
+- No `rfd`, keyring or encryption crates: `zenity` is invoked via `std::process::Command`.
 
 ---
 
@@ -116,20 +119,21 @@ Each story follows the format in `requirements/docs/functional-requirements.md` 
 - `LoadUseCase` trait + `LoadController` in `application/load.rs`.
 - Both take `FileSystem` driven port.
 
-### Step 4: Adapter IO
-- `src/adapters/io/mod.rs` with `FileSystem` trait + `StdFileSystem` impl.
+### Step 4: File-system ports
+- `src/application/save.rs` / `load.rs` each define a `FileSystem` driven port with `StdFileSystem`.
 - `read(path)` → `String` → `serde_json::from_str` → `SamcadFile`.
 - `write(path, samcad_file)` → `serde_json::to_string_pretty` → `fs::write`.
 
-### Step 5: File dialog adapter
-- `src/adapters/ui/file_dialog.rs` using `rfd` (cross-platform native dialogs) or `eframe`'s built-in.
-- `open_file()` → `Option<PathBuf>`, `save_file()` → `Option<PathBuf>`.
+### Step 5: File dialog adapter (ADR-009)
+- `src/adapters/ui/file_dialog.rs` defines the `FileDialog` trait with `ZenityFileDialog` (production) and `MockFileDialog` (tests).
+- `save_dialog(default_name)` → first save with native overwrite confirmation; `save_new_dialog(default_name)` → Save As with `unique_path`; `open_dialog()` → filtered open dialog.
+- No native dialog crate; headless tests inject the mock so no window is spawned.
 
 ### Step 6: Wire into UI
-- Extend `WindowUseCase` (or new `FileUseCase`) with `save()`, `save_as()`, `open()`.
-- Update `WindowController` to hold `SaveController` + `LoadController`.
-- In `adapters/ui/app.rs`: handle Ctrl+S, Ctrl+Shift+S, Ctrl+O; call use cases.
-- In `presentation/main_bar.rs`: ensure Save/Save As/Open menu items exist and return actions.
+- `SamcadApp` is generic over `F: FileDialog` and owns the current path; `SaveController` / `LoadController` are created per operation.
+- In `adapters/ui/app.rs`: handle Ctrl+S, Ctrl+Shift+S, Ctrl+O; route through the save scenarios table in `../docs/functional-requirements.md`.
+- Dirty tracking via `DrawingUseCase::is_dirty()` / `mark_saved()`; confirmation dialogs are `presentation/new_project.rs` (Save / Don't Save) and `presentation/open_project.rs` (Save / Don't Save / Cancel).
+- In `presentation/main_bar.rs`: File menu with **New Project**, **Open Project**, **Save**, **Save As...**, **Export**, plus the document stem and dirty `*`.
 
 ### Step 7: Camera restore on load
 - `LoadController` returns both `DocumentData` and `CameraData`.
@@ -139,13 +143,14 @@ Each story follows the format in `requirements/docs/functional-requirements.md` 
 
 ## Acceptance Criteria (Aggregate)
 
-- [ ] User can press Ctrl+S → native save dialog → file written as `.samcad` (JSON).
-- [ ] File contains: format version, ISO-8601 timestamp, hostname, IP, all points, camera zoom/pan.
-- [ ] User can press Ctrl+O → native open dialog → selects `.samcad` → drawing + camera restore exactly.
-- [ ] File is human-readable JSON; `cargo fmt` / `cargo build` / `cargo test` pass.
-- [ ] Round-trip test: create points, zoom/pan, save, reopen → points + camera identical.
-- [ ] Missing/invalid camera in file → defaults to `Camera::default()` (graceful).
-- [ ] Unknown `samcad_version` → error dialog, no crash.
+- [x] User can press Ctrl+S → native save dialog (first save) or silent overwrite → file written as `.samcad` (plain JSON).
+- [x] File contains: format version, ISO-8601 timestamp, hostname, IP, all points, camera zoom/pan.
+- [x] User can press Ctrl+O → native open dialog → selects `.samcad` → drawing + camera restore exactly, with a confirmation dialog first when dirty.
+- [x] File is human-readable JSON with no encryption; `cargo fmt` / `cargo check` / `cargo build` / `cargo test` pass.
+- [x] Round-trip test: create points, zoom/pan, save, reopen → points + camera identical.
+- [x] Missing/invalid camera in file → defaults to `Camera::default()` (graceful).
+- [x] Unknown `samcad_version` → typed `UnsupportedVersion` error, no crash; legacy encrypted content → typed `LegacyEncryptedFormat` error with a migration message.
+- [x] Save As never overwrites an existing file (numeric suffix); Save / New Project / Open follow the save scenarios table.
 
 ---
 
@@ -156,7 +161,7 @@ Each story follows the format in `requirements/docs/functional-requirements.md` 
 | IP detection fails (no network, multiple interfaces) | Fall back to "unknown"; log warning; don't block save. |
 | Future schema changes break old files | `samcad_version` field + match on read; migrate or reject with clear error. |
 | Camera origin uses f64 but zoom f32 — precision on huge drawings | Acceptable; zoom is view-only, origin is world. Document coordinates are f64. |
-| File dialog blocks on some platforms (Wayland, etc.) | Use `rfd` which handles platform quirks; test on Linux/Windows/macOS. |
+| File dialog blocks on some platforms (Wayland, etc.) | `FileDialog` port + `MockFileDialog` keep tests headless; Linux uses `zenity`, other platforms can supply another implementation. |
 
 ---
 

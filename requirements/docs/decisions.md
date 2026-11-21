@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-> Status: **Draft** · Last updated: 2026-11-20
+> Status: **Draft** · Last updated: 2026-11-21
 
 ## ADR-001 — Use Rust as the implementation language
 
@@ -26,11 +26,12 @@
 - **Decision:** `printpdf`, drawing entity geometry as PDF path operators with typed units; bundle one OFL-licensed font initially.
 - **Consequences:** Clean scalable output and selectable paper sizes; font embedding/shaping needs careful early testing.
 
-## ADR-005 — Native documents are versioned JSON via serde
+## ADR-005 — Native documents are plain versioned JSON via serde (no encryption)
 
-- **Context:** Need a save format that is simple, debuggable and stable across versions.
-- **Decision:** `.samcad` = versioned JSON serialized with serde.
-- **Consequences:** Human-readable and easy to migrate; larger files than binary formats. Revisit if large-document load times become a problem.
+- **Context:** Need a save format that is simple, debuggable and stable across versions. An earlier build encrypted files with a keyring-backed AES-GCM scheme, which made files unreadable, added dependencies, and required secret storage.
+- **Decision:** `.samcad` = plain, human-readable versioned JSON serialized with serde. No encryption, keyring or secret storage is involved. Legacy base64/encrypted files are detected on load and rejected with `LegacyEncryptedFormat` and a migration message.
+- **Alternatives:** Keep AES-GCM + keyring encryption; use a binary format (`postcard`) for compactness.
+- **Consequences:** Files are portable, inspectable and easy to migrate; larger than binary formats and carry no confidentiality. Revisit only if a concrete confidentiality requirement appears.
 
 ## ADR-006 — Keep a UI-independent core crate
 
@@ -50,6 +51,20 @@
 - **Decision:** A reusable `DialogModel<A>` / `DialogButton<A>` / `DialogState` trio in `presentation/dialog.rs`, rendered by a generic `dialog::show()` adapter in `adapters/ui/dialog.rs`. Buttons are right-aligned; Escape and backdrop click close without acting.
 - **Alternatives:** Hard-code a one-off modal; use egui's `Window` instead of `Modal`.
 - **Consequences:** New confirmations only need a view model function and a `DialogState` field. Slight extra abstraction for the first use, but pays off immediately for the next one.
+
+## ADR-009 — File dialogs behind a mockable `FileDialog` port using zenity
+
+- **Context:** Save, Save As and Open need native file dialogs. Calling `zenity` directly from `SamcadApp` made headless tests hang for over 60 seconds waiting for a dialog that never closes, and left `file_dialog.rs` at ~36% coverage.
+- **Decision:** Define a `FileDialog` trait (`save_dialog`, `save_new_dialog`, `open_dialog`) in `adapters/ui/file_dialog.rs`. `ZenityFileDialog` invokes `zenity --file-selection` in production; `MockFileDialog` returns configurable paths or cancellations in tests. `SamcadApp` is generic over `F: FileDialog` and the concrete implementation is injected from the composition root.
+- **Alternatives:** Add an `rfd` / native dialog crate (extra dependency, still hard to test); keep free functions and skip dialog tests; set an environment variable to bypass dialogs.
+- **Consequences:** Dialog flows are unit-tested without spawning subprocesses; adding another platform implementation means one more trait impl. `unique_path` and extension enforcement stay in the adapter and remain directly testable.
+
+## ADR-010 — Dirty tracking with save confirmation on New Project and Open
+
+- **Context:** New Project and Open must not silently discard unsaved work, but must also stay quick when there is nothing to lose.
+- **Decision:** `DrawingUseCase` exposes `is_dirty()` / `mark_saved()`. New Project resets immediately when clean and otherwise shows a **Save / Don't Save** dialog; Open behaves the same with an extra **Cancel** choice. Save persists the current path silently, while Save As always opens a dialog and generates a unique name. The main bar renders the document stem with a trailing `*` while dirty.
+- **Alternatives:** Always confirm regardless of dirty state; autosave before every destructive action; use a single generic "are you sure" prompt with no save option.
+- **Consequences:** No interruption for clean drawings, no data loss for dirty ones, and a single dirty flag drives both the title indicator and the confirmation flow. The dialog view models (`presentation/new_project.rs`, `presentation/open_project.rs`) hold the product decisions and remain egui-agnostic.
 
 ## Template for future ADRs
 
