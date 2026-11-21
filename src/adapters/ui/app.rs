@@ -1,6 +1,5 @@
 use eframe::egui;
 
-use crate::adapters::keyring::OsKeyStore;
 use crate::adapters::ui::file_dialog;
 use crate::adapters::window::WindowActionBridge;
 use crate::application::load::{LoadController, LoadUseCase, StdFileSystem as LoadStdFileSystem};
@@ -76,7 +75,7 @@ where
     }
 
     fn save_to(&mut self, path: std::path::PathBuf) {
-        let saver = SaveController::new(StdFileSystem, OsKeyStore::new());
+        let saver = SaveController::new(StdFileSystem);
         if let Err(e) = saver.save_as(path.clone(), &self.drawing, &self.camera) {
             eprintln!("Failed to save: {}", e);
         } else {
@@ -86,7 +85,7 @@ where
 
     fn open(&mut self) {
         if let Some(path) = file_dialog::open_dialog() {
-            let loader = LoadController::new(LoadStdFileSystem, OsKeyStore::new());
+            let loader = LoadController::new(LoadStdFileSystem);
             match loader.load(path.clone()) {
                 Ok(result) => {
                     self.drawing.clear();

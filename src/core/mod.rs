@@ -5,10 +5,8 @@
 //! alongside the ports as the feature set grows.
 
 pub mod command;
-pub mod crypto;
 pub mod document;
 pub mod format;
-pub mod keystore;
 pub mod machine;
 pub mod model;
 pub mod ports;

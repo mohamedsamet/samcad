@@ -1,10 +1,8 @@
-//! Save use case: serializes the document and camera to an encrypted file.
+//! Save use case: serializes the document and camera to a plain JSON file.
 
 use std::path::{Path, PathBuf};
 
-use crate::core::crypto::CryptoService;
 use crate::core::format::{DocumentData, SamcadFile};
-use crate::core::keystore::KeyStore;
 use crate::core::machine::collect_machine_info;
 use crate::core::ports::DrawingUseCase;
 use crate::presentation::canvas::Camera;
@@ -31,8 +29,6 @@ pub enum SaveError {
     Serialize(#[from] serde_json::Error),
     #[error("file write failed: {0}")]
     Io(#[from] std::io::Error),
-    #[error("encryption failed: {0}")]
-    Encryption(#[from] crate::core::crypto::CryptoError),
 }
 
 /// Driven port: abstract file system for writing.
@@ -50,17 +46,15 @@ impl FileSystem for StdFileSystem {
 }
 
 /// Controller that implements the save use case.
-pub struct SaveController<FS: FileSystem, K: KeyStore> {
+pub struct SaveController<FS: FileSystem> {
     fs: FS,
-    crypto: CryptoService<K>,
     current_path: std::cell::RefCell<Option<PathBuf>>,
 }
 
-impl<FS: FileSystem, K: KeyStore> SaveController<FS, K> {
-    pub fn new(fs: FS, key_store: K) -> Self {
+impl<FS: FileSystem> SaveController<FS> {
+    pub fn new(fs: FS) -> Self {
         Self {
             fs,
-            crypto: CryptoService::new(key_store),
             current_path: std::cell::RefCell::new(None),
         }
     }
@@ -95,7 +89,7 @@ impl<FS: FileSystem, K: KeyStore> SaveController<FS, K> {
     }
 }
 
-impl<FS: FileSystem, K: KeyStore> SaveUseCase for SaveController<FS, K> {
+impl<FS: FileSystem> SaveUseCase for SaveController<FS> {
     fn save(&self, drawing: &dyn DrawingUseCase, camera: &Camera) -> Result<(), SaveError> {
         let path = self
             .current_path
@@ -113,8 +107,7 @@ impl<FS: FileSystem, K: KeyStore> SaveUseCase for SaveController<FS, K> {
     ) -> Result<(), SaveError> {
         let file = self.build_samcad_file(drawing, camera)?;
         let json = serde_json::to_string_pretty(&file)?;
-        let encrypted = self.crypto.encrypt(&json)?;
-        self.fs.write(&path, &encrypted)?;
+        self.fs.write(&path, &json)?;
 
         *self.current_path.borrow_mut() = Some(path);
         Ok(())
@@ -130,14 +123,12 @@ mod tests {
     use super::*;
     use crate::application::drawing::DrawingController;
     use crate::core::document::Point;
-    use crate::core::keystore::KeyStoreError;
-    use base64::Engine as _;
     use std::cell::RefCell;
     use std::collections::HashMap;
     use std::rc::Rc;
 
     type Files = Rc<RefCell<HashMap<PathBuf, String>>>;
-    type TestController = SaveController<MemFS, MemKeyStore>;
+    type TestController = SaveController<MemFS>;
     type ControllerWithFiles = (TestController, Files);
 
     struct MemFS {
@@ -161,37 +152,14 @@ mod tests {
         }
     }
 
-    #[derive(Clone)]
-    struct MemKeyStore {
-        key: Rc<RefCell<Option<Vec<u8>>>>,
-    }
-
-    impl MemKeyStore {
-        fn new() -> Self {
-            Self {
-                key: Rc::new(RefCell::new(None)),
-            }
-        }
-    }
-
-    impl KeyStore for MemKeyStore {
-        fn load_key(&self) -> Result<Option<Vec<u8>>, KeyStoreError> {
-            Ok(self.key.borrow().clone())
-        }
-        fn store_key(&self, key: &[u8]) -> Result<(), KeyStoreError> {
-            *self.key.borrow_mut() = Some(key.to_vec());
-            Ok(())
-        }
-    }
-
     fn new_controller() -> ControllerWithFiles {
         let fs = MemFS::new();
         let files_ref = fs.files.clone();
-        (SaveController::new(fs, MemKeyStore::new()), files_ref)
+        (SaveController::new(fs), files_ref)
     }
 
     #[test]
-    fn save_writes_encrypted_content() {
+    fn save_writes_plain_json_content() {
         let drawing = DrawingController::new();
         drawing.add_point(Point { x: 1.0, y: 2.0 });
         drawing.add_point(Point { x: 3.0, y: 4.0 });
@@ -202,11 +170,10 @@ mod tests {
         controller.save_as(path.clone(), &drawing, &camera).unwrap();
 
         let content = files.borrow().get(&path).unwrap().clone();
-        // Encrypted file is base64, not plain JSON
-        assert!(!content.contains("samcad_version"));
-        base64::engine::general_purpose::STANDARD
-            .decode(&content)
-            .unwrap();
+        assert!(content.contains("samcad_version"));
+        let parsed: SamcadFile = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed.samcad_version, SamcadFile::CURRENT_VERSION);
+        assert_eq!(parsed.document.points.len(), 2);
     }
 
     #[test]
@@ -246,7 +213,7 @@ mod tests {
     fn save_with_failing_filesystem_returns_io_error() {
         let drawing = DrawingController::new();
         let camera = Camera::default();
-        let controller = SaveController::new(FailingFS, MemKeyStore::new());
+        let controller = SaveController::new(FailingFS);
 
         let result = controller.save_as(PathBuf::from("test.samcad"), &drawing, &camera);
         assert!(matches!(result, Err(SaveError::Io(_))));

@@ -1,11 +1,9 @@
-//! Load use case: decrypts a `.samcad` file into document and camera.
+//! Load use case: reads a plain JSON `.samcad` file into document and camera.
 
 use std::path::PathBuf;
 
-use crate::core::crypto::CryptoService;
 use crate::core::document::Document;
 use crate::core::format::SamcadFile;
-use crate::core::keystore::KeyStore;
 use crate::presentation::canvas::Camera;
 
 /// Driving port for loading a drawing.
@@ -33,8 +31,21 @@ pub enum LoadError {
     Deserialize(#[from] serde_json::Error),
     #[error("unsupported file version: {0} (current is {current})", current = SamcadFile::CURRENT_VERSION)]
     UnsupportedVersion(u32),
-    #[error("decryption failed: {0}")]
-    Decryption(#[from] crate::core::crypto::CryptoError),
+    #[error(
+        "this file uses the old encrypted format; open and re-save it with a previous SamCAD version"
+    )]
+    LegacyEncryptedFormat,
+}
+
+/// Returns true when the content looks like the base64 blob written by the
+/// former encrypted format rather than a JSON document.
+fn looks_like_legacy_encrypted(content: &str) -> bool {
+    let trimmed = content.trim();
+    !trimmed.is_empty()
+        && !trimmed.starts_with('{')
+        && trimmed
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '/' | '=' | '\n' | '\r'))
 }
 
 /// Driven port: abstract file system for reading.
@@ -52,26 +63,25 @@ impl FileSystem for StdFileSystem {
 }
 
 /// Controller that implements the load use case.
-pub struct LoadController<FS: FileSystem, K: KeyStore> {
+pub struct LoadController<FS: FileSystem> {
     fs: FS,
-    crypto: CryptoService<K>,
 }
 
-impl<FS: FileSystem, K: KeyStore> LoadController<FS, K> {
-    pub fn new(fs: FS, key_store: K) -> Self {
-        Self {
-            fs,
-            crypto: CryptoService::new(key_store),
-        }
+impl<FS: FileSystem> LoadController<FS> {
+    pub fn new(fs: FS) -> Self {
+        Self { fs }
     }
 }
 
-impl<FS: FileSystem, K: KeyStore> LoadUseCase for LoadController<FS, K> {
+impl<FS: FileSystem> LoadUseCase for LoadController<FS> {
     fn load(&self, path: PathBuf) -> Result<LoadResult, LoadError> {
         let content = self.fs.read(&path)?;
-        let json = self.crypto.decrypt(&content)?;
 
-        let file: SamcadFile = serde_json::from_str(&json)?;
+        if looks_like_legacy_encrypted(&content) {
+            return Err(LoadError::LegacyEncryptedFormat);
+        }
+
+        let file: SamcadFile = serde_json::from_str(&content)?;
 
         if file.samcad_version != SamcadFile::CURRENT_VERSION {
             return Err(LoadError::UnsupportedVersion(file.samcad_version));
@@ -93,7 +103,6 @@ impl<FS: FileSystem, K: KeyStore> LoadUseCase for LoadController<FS, K> {
 mod tests {
     use super::*;
     use crate::core::document::Point;
-    use crate::core::keystore::KeyStoreError;
     use std::cell::RefCell;
     use std::rc::Rc;
 
@@ -121,35 +130,6 @@ mod tests {
         }
     }
 
-    #[derive(Clone)]
-    struct MemKeyStore {
-        key: Rc<RefCell<Option<Vec<u8>>>>,
-    }
-
-    impl MemKeyStore {
-        fn new() -> Self {
-            Self {
-                key: Rc::new(RefCell::new(None)),
-            }
-        }
-
-        fn with_key(key: Vec<u8>) -> Self {
-            Self {
-                key: Rc::new(RefCell::new(Some(key))),
-            }
-        }
-    }
-
-    impl KeyStore for MemKeyStore {
-        fn load_key(&self) -> Result<Option<Vec<u8>>, KeyStoreError> {
-            Ok(self.key.borrow().clone())
-        }
-        fn store_key(&self, key: &[u8]) -> Result<(), KeyStoreError> {
-            *self.key.borrow_mut() = Some(key.to_vec());
-            Ok(())
-        }
-    }
-
     const VALID_JSON: &str = r#"{
         "samcad_version": 1,
         "saved_at": "2026-11-20T15:30:00Z",
@@ -158,20 +138,13 @@ mod tests {
         "camera": {"origin_x": 100.0, "origin_y": -50.0, "zoom": 2.5}
     }"#;
 
-    fn encrypted_fixture() -> (MemFS, MemKeyStore) {
-        let store = MemKeyStore::new();
-        let crypto = CryptoService::new(store.clone());
-        let encrypted = crypto.encrypt(VALID_JSON).unwrap();
-        (
-            MemFS::new_with_file(PathBuf::from("test.samcad"), encrypted),
-            store,
-        )
+    fn json_fixture() -> MemFS {
+        MemFS::new_with_file(PathBuf::from("test.samcad"), VALID_JSON.to_string())
     }
 
     #[test]
     fn load_restores_document_and_camera() {
-        let (fs, store) = encrypted_fixture();
-        let controller = LoadController::new(fs, store);
+        let controller = LoadController::new(json_fixture());
 
         let result = controller.load(PathBuf::from("test.samcad")).unwrap();
 
@@ -184,40 +157,41 @@ mod tests {
     }
 
     #[test]
-    fn load_with_wrong_key_fails() {
-        let (fs, _correct_store) = encrypted_fixture();
-        let wrong_store = MemKeyStore::with_key(vec![9u8; 32]);
-        let controller = LoadController::new(fs, wrong_store);
+    fn load_plain_json_is_portable_across_controllers() {
+        let first = LoadController::new(json_fixture());
+        let second = LoadController::new(json_fixture());
 
-        let result = controller.load(PathBuf::from("test.samcad"));
-        assert!(matches!(result, Err(LoadError::Decryption(_))));
+        let first_result = first.load(PathBuf::from("test.samcad")).unwrap();
+        let second_result = second.load(PathBuf::from("test.samcad")).unwrap();
+
+        assert_eq!(
+            first_result.document.points(),
+            second_result.document.points()
+        );
     }
 
     #[test]
     fn load_missing_file_returns_io_error() {
         let fs = MemFS::new_with_file(PathBuf::from("other.samcad"), "x".to_string());
-        let controller = LoadController::new(fs, MemKeyStore::new());
+        let controller = LoadController::new(fs);
 
         let result = controller.load(PathBuf::from("missing.samcad"));
         assert!(matches!(result, Err(LoadError::Io(_))));
     }
 
     #[test]
-    fn load_corrupted_data_returns_decryption_error() {
-        let fs = MemFS::new_with_file(PathBuf::from("test.samcad"), "!!!not_base64!!!".to_string());
-        let controller = LoadController::new(fs, MemKeyStore::new());
+    fn load_legacy_encrypted_data_returns_legacy_format_error() {
+        let fs = MemFS::new_with_file(PathBuf::from("test.samcad"), "YWJjZAabc123+/==".to_string());
+        let controller = LoadController::new(fs);
 
         let result = controller.load(PathBuf::from("test.samcad"));
-        assert!(matches!(result, Err(LoadError::Decryption(_))));
+        assert!(matches!(result, Err(LoadError::LegacyEncryptedFormat)));
     }
 
     #[test]
-    fn load_encrypted_invalid_json_returns_deserialize_error() {
-        let store = MemKeyStore::new();
-        let crypto = CryptoService::new(store.clone());
-        let encrypted = crypto.encrypt("not json").unwrap();
-        let fs = MemFS::new_with_file(PathBuf::from("test.samcad"), encrypted);
-        let controller = LoadController::new(fs, store);
+    fn load_invalid_json_returns_deserialize_error() {
+        let fs = MemFS::new_with_file(PathBuf::from("test.samcad"), "not json".to_string());
+        let controller = LoadController::new(fs);
 
         let result = controller.load(PathBuf::from("test.samcad"));
         assert!(matches!(result, Err(LoadError::Deserialize(_))));
@@ -226,11 +200,8 @@ mod tests {
     #[test]
     fn load_rejects_unsupported_version() {
         let json = VALID_JSON.replace("\"samcad_version\": 1", "\"samcad_version\": 999");
-        let store = MemKeyStore::new();
-        let crypto = CryptoService::new(store.clone());
-        let encrypted = crypto.encrypt(&json).unwrap();
-        let fs = MemFS::new_with_file(PathBuf::from("test.samcad"), encrypted);
-        let controller = LoadController::new(fs, store);
+        let fs = MemFS::new_with_file(PathBuf::from("test.samcad"), json);
+        let controller = LoadController::new(fs);
 
         let err = controller.load(PathBuf::from("test.samcad")).unwrap_err();
         assert!(matches!(err, LoadError::UnsupportedVersion(999)));
@@ -239,7 +210,7 @@ mod tests {
     #[test]
     fn open_returns_none_without_dialog() {
         let fs = MemFS::new_with_file(PathBuf::from("test.samcad"), "x".to_string());
-        let controller = LoadController::new(fs, MemKeyStore::new());
+        let controller = LoadController::new(fs);
 
         assert!(controller.open().unwrap().is_none());
     }
