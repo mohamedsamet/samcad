@@ -12,6 +12,7 @@ use crate::core::ports::DrawingUseCase;
 pub struct DrawingController {
     document: RefCell<Document>,
     history: RefCell<CommandHistory>,
+    saved_points: RefCell<Vec<Point>>,
 }
 
 impl DrawingController {
@@ -19,6 +20,7 @@ impl DrawingController {
         Self {
             document: RefCell::new(Document::default()),
             history: RefCell::new(CommandHistory::default()),
+            saved_points: RefCell::new(Vec::new()),
         }
     }
 }
@@ -56,6 +58,15 @@ impl DrawingUseCase for DrawingController {
     fn redo(&self) -> bool {
         let mut history = self.history.borrow_mut();
         history.redo(&mut self.document.borrow_mut())
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.document.borrow().points() != self.saved_points.borrow().as_slice()
+    }
+
+    fn mark_saved(&self) {
+        let points = self.document.borrow().points().to_vec();
+        *self.saved_points.borrow_mut() = points;
     }
 
     fn can_undo(&self) -> bool {

@@ -38,6 +38,12 @@ pub trait DrawingUseCase {
     /// Redo the last undone operation.
     fn redo(&self) -> bool;
 
+    /// Whether the drawing has changes that have not been saved yet.
+    fn is_dirty(&self) -> bool;
+
+    /// Mark the current drawing state as saved.
+    fn mark_saved(&self);
+
     /// Can undo?
     fn can_undo(&self) -> bool;
 

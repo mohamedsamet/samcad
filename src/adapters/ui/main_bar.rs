@@ -6,28 +6,38 @@ use crate::presentation::main_bar;
 
 use super::theme::Theme;
 
-/// Renders the permanent main bar: menus on the left, version title in the
-/// middle, window controls on the right. Returns the menu action selected this
-/// frame, if any, so the caller can react to it (the menu itself only closes).
-pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) -> Option<MenuAction> {
-    let model = main_bar::view_model();
-
-    egui::Panel::top("main_bar")
+/// Renders the permanent main bar: File menu on the left, document title after it,
+/// app title in the middle, window controls on the right.
+/// Returns the menu action selected this frame, if any.
+pub fn show(
+    ui: &mut egui::Ui,
+    window: &dyn WindowUseCase,
+    theme: &Theme,
+    model: &main_bar::MainBarModel,
+) -> Option<MenuAction> {
+    let response = egui::Panel::top("main_bar")
         .exact_size(theme.main_bar_height)
         .show(ui, |ui| {
-            // Three equal columns keep the middle one centered in the window.
             ui.columns(3, |columns| {
-                let chosen = columns[0]
-                    .vertical_centered(|ui| paint_menus(ui, model.menus, theme))
-                    .inner;
-
-                columns[1].vertical_centered(|ui| {
-                    ui.label(model.title);
+                // Left column: File menu + document title
+                let chosen = columns[0].vertical_centered(|ui| {
+                    ui.horizontal(|ui| {
+                        let menu_result = paint_menus(ui, model.menus, theme);
+                        if let Some(doc_title) = &model.document_title {
+                            ui.add_space(8.0);
+                            ui.label(doc_title.as_str());
+                        }
+                        menu_result
+                    })
+                    .inner
                 });
 
-                // Right-to-left layout puts the first item at the far right,
-                // so iterate in reverse to keep Close at the edge and Minimize
-                // to its left (the conventional order).
+                // Center column: app title (version)
+                columns[1].vertical_centered(|ui| {
+                    ui.label(model.app_title.as_str());
+                });
+
+                // Right column: window controls
                 columns[2].with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     for &button in model.window_buttons.iter().rev() {
                         paint_window_button(ui, button, window);
@@ -36,8 +46,9 @@ pub fn show(ui: &mut egui::Ui, window: &dyn WindowUseCase, theme: &Theme) -> Opt
 
                 chosen
             })
-        })
-        .inner
+            .inner
+        });
+    response.inner
 }
 
 fn paint_menus(ui: &mut egui::Ui, menus: &[main_bar::Menu], theme: &Theme) -> Option<MenuAction> {
@@ -91,14 +102,16 @@ mod tests {
     use super::*;
 
     use crate::adapters::ui::test_support::{Harness, RecordingWindow};
+    use crate::presentation::component::MenuItem;
 
     #[test]
     fn render_keeps_the_bar_free_of_window_commands_until_clicked() {
         let mut harness = Harness::new();
         let window = RecordingWindow::default();
 
+        let model = main_bar::view_model(None, false);
         harness.frame(vec![], |ui| {
-            show(ui, &window, &Theme::default());
+            show(ui, &window, &Theme::default(), &model);
         });
 
         assert!(window.calls.borrow().is_empty());
@@ -117,5 +130,51 @@ mod tests {
         }
 
         assert_eq!(*window.calls.borrow(), ["minimize", "close"]);
+    }
+
+    #[test]
+    fn show_renders_without_panic() {
+        let mut harness = Harness::new();
+        let window = RecordingWindow::default();
+
+        let model = main_bar::view_model(None, false);
+        harness.frame(vec![], |ui| {
+            show(ui, &window, &Theme::default(), &model);
+        });
+        // If we get here without panic, the test passes
+    }
+
+    #[test]
+    fn paint_menus_with_empty_list_returns_none() {
+        let mut harness = Harness::new();
+
+        harness.frame(vec![], |ui| {
+            let result = paint_menus(ui, &[], &Theme::default());
+            assert!(result.is_none());
+        });
+    }
+
+    #[test]
+    fn paint_menus_with_menu_items_renders() {
+        let mut harness = Harness::new();
+
+        let menu = main_bar::Menu {
+            label: "File",
+            items: &[
+                MenuItem {
+                    label: "New",
+                    action: MenuAction::NewProject,
+                },
+                MenuItem {
+                    label: "Open",
+                    action: MenuAction::Open,
+                },
+            ],
+        };
+
+        harness.frame(vec![], |ui| {
+            let result = paint_menus(ui, &[menu], &Theme::default());
+            assert!(result.is_none());
+        });
     }
 }

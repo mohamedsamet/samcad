@@ -11,4 +11,5 @@ pub mod component;
 pub mod dialog;
 pub mod main_bar;
 pub mod new_project;
+pub mod open_project;
 pub mod palette;

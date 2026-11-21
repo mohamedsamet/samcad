@@ -1,8 +1,8 @@
 //! Presentation logic for the "New Project" confirmation dialog.
 //!
-//! Choosing New Project first asks whether the current work should be saved.
-//! Saving is not implemented yet, so both choices discard the current drawing;
-//! the dialog exists so the flow and wording are already in place.
+//! Choosing New Project with a non-empty drawing asks whether the current work
+//! should be saved. Saving uses the normal Save flow, then starts a fresh
+//! project; "Don't Save" starts a fresh project immediately.
 
 use super::dialog::{DialogButton, DialogModel};
 

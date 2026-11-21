@@ -100,6 +100,14 @@ mod tests {
 
         assert_eq!(cfg.graphics.point_radius, 2.0);
         assert_eq!(cfg.graphics.point_color, egui::Color32::WHITE);
+        assert_eq!(
+            cfg.graphics.snap_indicator_color,
+            egui::Color32::from_rgb(255, 165, 0)
+        );
+        assert_eq!(
+            cfg.graphics.selection_color,
+            egui::Color32::from_rgb(0, 120, 215)
+        );
     }
 
     #[test]
@@ -150,5 +158,71 @@ mod tests {
             cfg.graphics.snap_indicator_color,
             egui::Color32::from_rgb(255, 165, 0)
         ); // default
+    }
+
+    #[test]
+    fn graphics_config_default_values() {
+        let cfg = GraphicsConfig::default();
+        assert_eq!(cfg.point_radius, 2.0);
+        assert_eq!(cfg.point_color, egui::Color32::WHITE);
+        assert_eq!(
+            cfg.snap_indicator_color,
+            egui::Color32::from_rgb(255, 165, 0)
+        );
+        assert_eq!(cfg.selection_color, egui::Color32::from_rgb(0, 120, 215));
+    }
+
+    #[test]
+    fn adapter_config_default() {
+        let cfg = AdapterConfig::default();
+        assert_eq!(cfg.graphics.point_radius, 2.0);
+        assert_eq!(cfg.graphics.point_color, egui::Color32::WHITE);
+    }
+
+    #[test]
+    fn load_config_with_partial_env_file() {
+        let _g = CWD_LOCK.lock().unwrap();
+        let tmp = std::env::temp_dir().join("samcad-test-cfg-partial");
+        fs::create_dir_all(tmp.join("config")).unwrap();
+        fs::write(tmp.join("config/samcad.env"), "POINT_RADIUS=5.0\n").unwrap();
+        let old = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&tmp).unwrap();
+        let cfg = load_config();
+        std::env::set_current_dir(old).unwrap();
+        fs::remove_dir_all(&tmp).ok();
+
+        assert_eq!(cfg.graphics.point_radius, 5.0);
+        // Other values should be defaults
+        assert_eq!(
+            cfg.graphics.snap_indicator_color,
+            egui::Color32::from_rgb(255, 165, 0)
+        );
+        assert_eq!(
+            cfg.graphics.selection_color,
+            egui::Color32::from_rgb(0, 120, 215)
+        );
+        assert_eq!(cfg.graphics.point_color, egui::Color32::WHITE);
+    }
+
+    #[test]
+    fn load_config_with_four_component_rgba() {
+        let _g = CWD_LOCK.lock().unwrap();
+        let tmp = std::env::temp_dir().join("samcad-test-cfg-rgba");
+        fs::create_dir_all(tmp.join("config")).unwrap();
+        fs::write(
+            tmp.join("config/samcad.env"),
+            "SNAP_INDICATOR_COLOR=255,0,0,128\n",
+        )
+        .unwrap();
+        let old = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&tmp).unwrap();
+        let cfg = load_config();
+        std::env::set_current_dir(old).unwrap();
+        fs::remove_dir_all(&tmp).ok();
+
+        assert_eq!(
+            cfg.graphics.snap_indicator_color,
+            egui::Color32::from_rgba_unmultiplied(255, 0, 0, 128)
+        );
     }
 }

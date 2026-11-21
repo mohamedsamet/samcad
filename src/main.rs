@@ -1,6 +1,7 @@
 //! Composition root: wire the adapters and use cases, then launch the UI.
 //! No business logic belongs here.
 
+use samcad::adapters::ui::file_dialog::ZenityFileDialog;
 use samcad::adapters::ui::{SamcadApp, native_options};
 use samcad::adapters::window::WindowActionAdapter;
 use samcad::application::{
@@ -24,6 +25,7 @@ fn main() -> eframe::Result {
                 tools,
                 drawing,
                 window_bridge,
+                ZenityFileDialog,
             )))
         }),
     )

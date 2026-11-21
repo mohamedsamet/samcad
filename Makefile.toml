@@ -1,0 +1,6 @@
+[tasks.cov]
+description = "Run coverage and enforce 80% gate"
+script = [
+  "cargo llvm-cov --locked --lcov --output-path target/coverage/lcov.info",
+  "python3 scripts/coverage_gate.py target/coverage/lcov.info 80"
+]

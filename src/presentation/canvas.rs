@@ -205,6 +205,10 @@ mod tests {
         fn redo(&self) -> bool {
             false
         }
+        fn is_dirty(&self) -> bool {
+            false
+        }
+        fn mark_saved(&self) {}
         fn can_undo(&self) -> bool {
             false
         }

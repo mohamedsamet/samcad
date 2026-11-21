@@ -108,6 +108,34 @@ def main(argv: list[str]) -> int:
     percentage = 100 * total_hit / total_found
     print(f"  {'total':<14}{total_hit:>5}/{total_found:<5} {percentage:>7.2f}%")
 
+    # Per-file coverage: show only the 5 least covered files
+    print("\nLeast covered files (top 5):")
+    file_stats: list[tuple[str, int, int, float]] = []
+    for path, lines in parse_lcov(report).items():
+        try:
+            relative = path.relative_to(SRC.resolve()).as_posix()
+        except ValueError:
+            continue
+        if not in_scope(relative):
+            continue
+
+        cutoff = first_test_line(path)
+        production = [
+            count
+            for line, count in lines.items()
+            if cutoff is None or line < cutoff
+        ]
+        if not production:
+            continue
+
+        found = len(production)
+        hit = sum(1 for count in production if count > 0)
+        pct = 100 * hit / found
+        file_stats.append((relative, found, hit, pct))
+
+    for relative, found, hit, pct in sorted(file_stats, key=lambda x: x[3])[:5]:
+        print(f"  {relative:<60} {hit:>5}/{found:<5} {pct:>7.2f}%")
+
     verdict = "PASS" if percentage >= threshold else "FAIL"
     print(f"\nCoverage gate: {threshold:.2f}% -> {verdict}")
     return 0 if verdict == "PASS" else 1
